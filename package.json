@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "axios": "^1.7.2",
+    "dotenv": "^16.4.5",
+    "flat-file-db": "^1.0.0",
+    "lowdb": "^4.0.1",
+    "nodejs-microdb": "^0.0.2",
+    "telegraf": "^4.16.3"
+  }
+}
