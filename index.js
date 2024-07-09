@@ -1,9 +1,15 @@
 require("dotenv").config();
+const net = require('net');
 const Telegraf = require("telegraf").Telegraf;
 const bot = new Telegraf(process.env.telegram_bot);
 const { default: axios } = require("axios");
 const flatfile = require('flat-file-db');
 const db = flatfile('./database.db');
+
+const PORT = 8089;
+const HOST = '127.0.0.1';
+
+const server = net.createServer();
 
 const numbersInit = db.get('numbers');
 // if (typeof (numbersInit) !== 'object') {
@@ -252,7 +258,7 @@ const logic = async (data) => {
                     session.auto.count = +text;
                 } else if (!session?.auto?.stake) {
                     response = "Which games fo you want to include in the plays\nOptions \n1. A1\n2. A2\n3. P2\n4. B\n\neg 1,2,3,4";
-                    session.auto.stake = +text;
+                    session.auto.stake = text.split(",");
                 } else if (!session?.auto?.games) {
                     response = "Do you want to confirm each iteration? \n1. Yes\n0. No\n";
                     session.auto.games = text;
@@ -274,7 +280,14 @@ const logic = async (data) => {
                                 data.reply(resps?.data?.data?.inboundResponse || resps?.data?.ussdMenu);
                             } else data.reply("Cancelled and moving to the next");
                             delete session?.auto.confirmData;
-                            await sleep(10200);
+                            session.auto.waiting = true;
+                            db.put(key, session);
+                            response = 'Waiting for next trigger';
+                            return;
+                        }
+
+                        if (session?.auto.waiting) {
+                            delete session.auto.waiting;
                         }
 
                         //Total games to play 
@@ -312,9 +325,12 @@ const logic = async (data) => {
                                         if (!plays.includes(pNumbers)) plays.push(pNumbers);
                                     }
                                     data_[keyValue] = plays?.join(",");
-                                } else if (loop === 4) data_[keyValue] = session?.auto?.stake ?? 1;
+                                } else if (loop === 4) {
+                                    const pi = Math.floor(Math.random() * (session?.auto?.stake.length - 1 - 0 + 1) + 0);
+                                    data_[keyValue] = session?.auto?.stake[pi] ?? 1;
+                                }
 
-                                const resps = await http.post(`user/ussd/ticket/${session.auto.number?.network === 'MTN' ? '' : 'vodafone'}`, data_);
+                                let resps = await http.post(`user/ussd/ticket/${session.auto.number?.network === 'MTN' ? '' : 'vodafone'}`, data_);
                                 response = resps?.data?.data?.inboundResponse || resps?.data?.ussdMenu;
 
                                 if (loop === 4) {
@@ -324,15 +340,19 @@ const logic = async (data) => {
                                         earlyExit = false;
                                     } else {
                                         session.auto.done++;
-                                        http.post(`user/ussd/ticket/${session.auto.number?.network === 'MTN' ? '' : 'vodafone'}`, session?.auto.confirmData);
+                                        data_[keyValue] = 1;
+                                        data.reply(response);
+                                        resps = await http.post(`user/ussd/ticket/${session.auto.number?.network === 'MTN' ? '' : 'vodafone'}`, data_);
                                         response = resps?.data?.data?.inboundResponse || resps?.data?.ussdMenu;
+                                        session.auto.waiting = true;
+                                        loop += 1000;
+                                        earlyExit = false;
                                     }
                                 }
 
                                 await sleep(200);
                                 loop++;
                             }
-                            await sleep(4200);
                         }
 
                         if (session.auto.done >= +session.auto.count) {
@@ -359,3 +379,29 @@ const logic = async (data) => {
 bot.start(async (ctx) => logic(ctx));
 bot.on("text", (data) => logic(data));
 bot.launch();
+
+server.listen(PORT, HOST, () => {
+    console.log(`Server listening on ${HOST}:${PORT}`);
+});
+
+server.on('connection', (socket) => {
+    console.log('Client connected:', socket.remoteAddress);
+
+    socket.on('data', (data) => {
+        console.log('Received data:', data.toString());
+        // Echo the data back to the client
+        socket.write(`Server received: ${data}`);
+    });
+
+    socket.on('close', () => {
+        console.log('Client disconnected');
+    });
+
+    socket.on('error', (err) => {
+        console.error('Socket error:', err);
+    });
+});
+
+server.on('error', (err) => {
+    console.error('Server error:', err);
+});
