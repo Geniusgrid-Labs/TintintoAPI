@@ -408,7 +408,8 @@ var io = new Server(http_, {
 let socket_session = null;
 app.get('*', function (req, res) {
     console.log("-------");
-    socket_session.emit("text", "oi oi");
+    if (socket_session !== null)
+        socket_session.emit("text", "oi oi");
     res.status(200).send("What are you looking for here");
 });
 
@@ -421,6 +422,7 @@ http_.listen(3000, function () {
 io.on('connection', function (socket) {
     console.log('Client connected to the WebSocket');
     socket_session = socket;
+    io.emit('connection', msg);
 
     socket.on('disconnect', () => {
         console.log('Client disconnected');
