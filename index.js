@@ -406,8 +406,8 @@ var io = new Server(http_, {
 })
 
 app.get('*', function (req, res) {
-    console.log("");
-    res.status(200);
+    console.log("-------");
+    res.status(200).send("What are you looking for here");
 });
 
 http_.listen(3000, function () {
