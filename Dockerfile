@@ -4,7 +4,7 @@ WORKDIR /opt/app
 COPY package.json .
 RUN npm install
 
-COPY output /opt/app/dist
+COPY output /opt/app
 
 EXPOSE 80
 CMD [ "npm", "start"]
