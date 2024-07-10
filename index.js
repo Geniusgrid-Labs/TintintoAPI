@@ -379,34 +379,14 @@ bot.on("text", (data) => logic(data));
 bot.launch();
 
 
+
 const app = express();
-app.use(function (req, res, next) {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader(
-        "Access-Control-Allow-Methods",
-        "GET, POST, OPTIONS, PUT, PATCH, DELETE"
-    );
-    res.setHeader(
-        "Access-Control-Allow-Headers",
-        "Origin, X-Requested-With,content-type,Accept"
-    );
-    next();
+const http_ = require('http').createServer(app);
+const io = require('socket.io')(http_);
+io.on('connection', (socket) => {
+    console.log("Client Connected");
 });
 
-const server = http.createServer(app);
-
-const io = new Server(server, {
-    cors: {
-        origin: "*",
-    },
-});
-
-server.listen(8089, () => {
-    console.log(
-        `Running API is running on port : 8089`
-    );
-});
-
-io.on("connection", (socket) => {
-    console.log("Connected");
+http_.listen(8089, () => {
+    console.log("Server is running on 8089");
 });
