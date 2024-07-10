@@ -408,9 +408,10 @@ var io = new Server(http_, {
 let socket_session = null;
 app.get('*', function (req, res) {
     console.log("-------");
-    if (socket_session !== null)
-        socket_session.emit("new_message", "oi oi");
-    else
+    if (socket_session !== null) {
+        if (req?.query?.data)
+            socket_session.emit("new_message", req?.query?.data);
+    } else
         console.log("socket null")
     res.status(200).send("What are you looking for here");
 });
