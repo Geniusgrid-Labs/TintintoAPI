@@ -407,6 +407,7 @@ var io = new Server(http_, {
 
 app.get('/', function (req, res) {
     console.log("");
+    res.status(200);
 });
 
 http_.listen(3000, function () {
