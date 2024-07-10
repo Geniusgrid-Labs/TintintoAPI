@@ -6,11 +6,6 @@ const { default: axios } = require("axios");
 const flatfile = require('flat-file-db');
 const db = flatfile('./database.db');
 
-const PORT = 8089;
-const HOST = '127.0.0.1';
-
-const server = net.createServer();
-
 const numbersInit = db.get('numbers');
 // if (typeof (numbersInit) !== 'object') {
 db.put('numbers', [
@@ -380,26 +375,56 @@ bot.start(async (ctx) => logic(ctx));
 bot.on("text", (data) => logic(data));
 bot.launch();
 
-server.listen(PORT, HOST, () => {
-    console.log(`Server listening on ${HOST}:${PORT}`);
-});
+// server.listen(PORT, HOST, () => {
+//     console.log(`Server listening on ${HOST}:${PORT}`);
+// });
 
-server.on('connection', (socket) => {
-    console.log('Client connected:', socket.remoteAddress);
+// server.on('connection', (socket) => {
+//     console.log('Client connected:', socket.remoteAddress);
+
+//     socket.on('data', (data) => {
+//         console.log('Received data:', data.toString());
+//         // Echo the data back to the client
+//         socket.write(`Server received: ${data}`);
+//     });
+
+//     socket.on('close', () => {
+//         console.log('Client disconnected');
+//     });
+
+//     socket.on('error', (err) => {
+//         console.error('Socket error:', err);
+//     });
+// });
+
+// server.on('error', (err) => {
+//     console.error('Server error:', err);
+// });
+
+
+
+const PORT = 8089;
+const HOST = '0.0.0.0';
+const server = net.createServer((socket) => {
+    console.log('Client connected');
 
     socket.on('data', (data) => {
         console.log('Received data:', data.toString());
         // Echo the data back to the client
-        socket.write(`Server received: ${data}`);
+        socket.write('Server received: ' + data);
     });
 
-    socket.on('close', () => {
+    socket.on('end', () => {
         console.log('Client disconnected');
     });
 
     socket.on('error', (err) => {
         console.error('Socket error:', err);
     });
+});
+
+server.listen(PORT, HOST, () => {
+    console.log(`Server listening on ${HOST}:${PORT}`);
 });
 
 server.on('error', (err) => {
