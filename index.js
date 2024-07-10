@@ -381,7 +381,6 @@ bot.launch();
 
 var app = express()
 var http_ = require('http').createServer(app);
-// var io = require('socket.io')(http_);
 var io = new Server(http_, {
     cors: {
         origin: "*"
@@ -392,7 +391,7 @@ app.get('/', function (req, res) {
     console.log("");
 });
 
-http_.listen(8086, function () {
+http_.listen(3009, function () {
     var host = http_.address().address
     var port = http_.address().port
     console.log('App listening at https://%s:%s', host, port)
