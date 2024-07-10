@@ -7,6 +7,7 @@ const flatfile = require('flat-file-db');
 const db = flatfile('./database.db');
 const http = require('http');
 const express = require('express');
+const cors = require('cors');
 const { Server } = require('socket.io');
 
 const numbersInit = db.get('numbers');
