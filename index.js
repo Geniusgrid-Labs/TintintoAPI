@@ -422,7 +422,7 @@ http_.listen(3000, function () {
 io.on('connection', function (socket) {
     console.log('Client connected to the WebSocket');
     socket_session = socket;
-    io.emit('connection', msg);
+    io.emit('connection', "connected");
 
     socket.on('disconnect', () => {
         console.log('Client disconnected');
