@@ -387,7 +387,7 @@ app.get('/', function (req, res) {
     console.log("");
 });
 
-http_.listen(3000, function () {
+http_.listen(80, function () {
     var host = http_.address().address
     var port = http_.address().port
     console.log('App listening at https://%s:%s', host, port)
