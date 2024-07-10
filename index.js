@@ -410,7 +410,8 @@ app.get('*', function (req, res) {
     console.log("-------");
     if (socket_session !== null)
         socket_session.emit("new_message", "oi oi");
-
+    else
+        console.log("socket null")
     res.status(200).send("What are you looking for here");
 });
 
