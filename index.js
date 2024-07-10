@@ -5,6 +5,9 @@ const bot = new Telegraf(process.env.telegram_bot);
 const { default: axios } = require("axios");
 const flatfile = require('flat-file-db');
 const db = flatfile('./database.db');
+const http = require('http');
+const express = require('express');
+const { Server } = require('socket.io');
 
 const numbersInit = db.get('numbers');
 // if (typeof (numbersInit) !== 'object') {
@@ -31,7 +34,7 @@ db.put('numbers', [
 // }
 
 const features = [{ name: 'Game Play', id: 1 }, { name: 'Show numbers', id: 2 }, { name: 'Redis Data', id: 3 }, { name: 'DB Data', id: 4 }, { name: 'Auto Play', id: 5 }];
-const http = axios.create({
+const httpAxios = axios.create({
     baseURL: 'https://api.atenanla.com/api/v1.0/'
 });
 
@@ -88,7 +91,7 @@ const logic = async (data) => {
                 session.name = text;
             } else if (session?.step === 1) {
                 const payload = text.split("|");
-                const data = await http.post('admin/login', { mobile: payload[0], password: payload[1] });
+                const data = await httpAxios.post('admin/login', { mobile: payload[0], password: payload[1] });
 
                 db.put('adminSession', data?.data);
                 session.step = 2;
@@ -130,7 +133,7 @@ const logic = async (data) => {
                     }
                     session.payload = data_;
                     session.selectedMobile = selectedMobile;
-                    const data = await http.post(`user/ussd/ticket/${session.selectedMobile?.network === 'MTN' ? '' : 'vodafone'}`, data_);
+                    const data = await httpAxios.post(`user/ussd/ticket/${session.selectedMobile?.network === 'MTN' ? '' : 'vodafone'}`, data_);
                     response = data?.data?.data?.inboundResponse || data?.data?.ussdMenu;
                     session.option = 2;
                 } else if (session.option === 2) {
@@ -150,7 +153,7 @@ const logic = async (data) => {
 
                             l++;
 
-                            const resp = await http.post(`user/ussd/ticket/${session.selectedMobile?.network === 'MTN' ? '' : 'vodafone'}`, session.payload);
+                            const resp = await httpAxios.post(`user/ussd/ticket/${session.selectedMobile?.network === 'MTN' ? '' : 'vodafone'}`, session.payload);
                             response = resp?.data?.data?.inboundResponse || resp?.data?.ussdMenu;
                             response = `${session.selectedMobile?.mobile}\n\n${response}`
                             if (response.includes("1. Confirm")) break;
@@ -159,7 +162,7 @@ const logic = async (data) => {
                             await sleep(1000);
                         }
                     } else {
-                        const resp = await http.post(`user/ussd/ticket/${session.selectedMobile?.network === 'MTN' ? '' : 'vodafone'}`, session.payload);
+                        const resp = await httpAxios.post(`user/ussd/ticket/${session.selectedMobile?.network === 'MTN' ? '' : 'vodafone'}`, session.payload);
                         response = resp?.data?.data?.inboundResponse || resp?.data?.ussdMenu;
                         response = `${session.selectedMobile?.mobile}\n\n${response}`
                     }
@@ -185,9 +188,9 @@ const logic = async (data) => {
                             resp = await http.get(`admin/redis/${text}`, header);
                         else if (session.subStep === '2') {
                             const d = text.split("=");
-                            resp = await http.post(`admin/redis`, { key: d[0], value: d[1] }, header);
+                            resp = await httpAxios.post(`admin/redis`, { key: d[0], value: d[1] }, header);
                         } else if (session.subStep === '3')
-                            resp = await http.delete(`admin/redis/${text}`, header);
+                            resp = await httpAxios.delete(`admin/redis/${text}`, header);
 
                         console.log(resp);
                         response = resp?.data ?? 'Something went wrong retry';
@@ -271,7 +274,7 @@ const logic = async (data) => {
                             session.auto.done++;
                             if (text === '1') {
                                 session.auto.confirmData[session.auto.number?.network === 'VODAFONE' ? 'text' : 'ussdString'] = '1';
-                                const resps = await http.post(`user/ussd/ticket/${session.auto.number?.network === 'MTN' ? '' : 'vodafone'}`, session?.auto.confirmData);
+                                const resps = await httpAxios.post(`user/ussd/ticket/${session.auto.number?.network === 'MTN' ? '' : 'vodafone'}`, session?.auto.confirmData);
                                 data.reply(resps?.data?.data?.inboundResponse || resps?.data?.ussdMenu);
                             } else data.reply("Cancelled and moving to the next");
                             delete session?.auto.confirmData;
@@ -325,7 +328,7 @@ const logic = async (data) => {
                                     data_[keyValue] = session?.auto?.stake[pi] ?? 1;
                                 }
 
-                                let resps = await http.post(`user/ussd/ticket/${session.auto.number?.network === 'MTN' ? '' : 'vodafone'}`, data_);
+                                let resps = await httpAxios.post(`user/ussd/ticket/${session.auto.number?.network === 'MTN' ? '' : 'vodafone'}`, data_);
                                 response = resps?.data?.data?.inboundResponse || resps?.data?.ussdMenu;
 
                                 if (loop === 4) {
@@ -337,7 +340,7 @@ const logic = async (data) => {
                                         session.auto.done++;
                                         data_[keyValue] = 1;
                                         data.reply(response);
-                                        resps = await http.post(`user/ussd/ticket/${session.auto.number?.network === 'MTN' ? '' : 'vodafone'}`, data_);
+                                        resps = await httpAxios.post(`user/ussd/ticket/${session.auto.number?.network === 'MTN' ? '' : 'vodafone'}`, data_);
                                         response = resps?.data?.data?.inboundResponse || resps?.data?.ussdMenu;
                                         session.auto.waiting = true;
                                         loop += 1000;
@@ -375,58 +378,38 @@ bot.start(async (ctx) => logic(ctx));
 bot.on("text", (data) => logic(data));
 bot.launch();
 
-// server.listen(PORT, HOST, () => {
-//     console.log(`Server listening on ${HOST}:${PORT}`);
-// });
 
-// server.on('connection', (socket) => {
-//     console.log('Client connected:', socket.remoteAddress);
-
-//     socket.on('data', (data) => {
-//         console.log('Received data:', data.toString());
-//         // Echo the data back to the client
-//         socket.write(`Server received: ${data}`);
-//     });
-
-//     socket.on('close', () => {
-//         console.log('Client disconnected');
-//     });
-
-//     socket.on('error', (err) => {
-//         console.error('Socket error:', err);
-//     });
-// });
-
-// server.on('error', (err) => {
-//     console.error('Server error:', err);
-// });
-
-
-
-const PORT = 8089;
-const HOST = '0.0.0.0';
-const server = net.createServer((socket) => {
-    console.log('Client connected');
-
-    socket.on('data', (data) => {
-        console.log('Received data:', data.toString());
-        // Echo the data back to the client
-        socket.write('Server received: ' + data);
-    });
-
-    socket.on('end', () => {
-        console.log('Client disconnected');
-    });
-
-    socket.on('error', (err) => {
-        console.error('Socket error:', err);
-    });
+const app = express();
+app.use(function (req, res, next) {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader(
+        "Access-Control-Allow-Methods",
+        "GET, POST, OPTIONS, PUT, PATCH, DELETE"
+    );
+    res.setHeader(
+        "Access-Control-Allow-Headers",
+        "Origin, X-Requested-With,content-type,Accept"
+    );
+    next();
 });
 
-server.listen(PORT, HOST, () => {
-    console.log(`Server listening on ${HOST}:${PORT}`);
+const server = http.createServer(app);
+
+const io = new Server(server, {
+    cors: {
+        origin:
+            process.env.APPLICATION_ENV === "debug"
+                ? ["https://admin.atenanla.com", "http://localhost:5173"]
+                : ["https://admin.atenanla.com"],
+    },
 });
 
-server.on('error', (err) => {
-    console.error('Server error:', err);
+server.listen(8089, () => {
+    console.log(
+        `Running API is running on port : 8089`
+    );
+});
+
+io.on("connection", (socket) => {
+    console.log("Connected");
 });
