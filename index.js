@@ -379,14 +379,29 @@ bot.on("text", (data) => logic(data));
 bot.launch();
 
 
+var app = express()
+var http = require('http').createServer(app);
+var io = require('socket.io')(http);
 
-const app = express();
-const http_ = require('http').createServer(app);
-const io = require('socket.io')(http_);
-io.on('connection', (socket) => {
-    console.log("Client Connected");
+app.get('/', function (req, res) {
+    console.log("");
 });
 
-http_.listen(8089, () => {
-    console.log("Server is running on 8089");
+http.listen(process.env.PORT || 3000, function () {
+    var host = http.address().address
+    var port = http.address().port
+    console.log('App listening at https://%s:%s', host, port)
 });
+
+io.on('connection', function (socket) {
+    console.log('Client connected to the WebSocket');
+
+    socket.on('disconnect', () => {
+        console.log('Client disconnected');
+    });
+
+    socket.on('chat message', function (msg) {
+        console.log("Received a chat message");
+        io.emit('chat message', msg);
+    });
+})
