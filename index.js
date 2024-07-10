@@ -381,7 +381,12 @@ bot.launch();
 
 var app = express()
 var http_ = require('http').createServer(app);
-var io = require('socket.io')(http_);
+// var io = require('socket.io')(http_);
+var io = new Server(http_, {
+    cors: {
+        origin: "*"
+    }
+})
 
 app.get('/', function (req, res) {
     console.log("");
