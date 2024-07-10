@@ -397,10 +397,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
     cors: {
-        origin:
-            process.env.APPLICATION_ENV === "debug"
-                ? ["https://admin.atenanla.com", "http://localhost:5173"]
-                : ["https://admin.atenanla.com"],
+        origin: ["https://amritb.github.io"],
     },
 });
 
