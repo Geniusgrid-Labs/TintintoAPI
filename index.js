@@ -379,7 +379,24 @@ bot.on("text", (data) => logic(data));
 bot.launch();
 
 
-var app = express()
+var app = express();
+app.use(
+    cors({
+        credentials: true,
+    })
+);
+app.use(function (req, res, next) {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader(
+        "Access-Control-Allow-Methods",
+        "GET, POST, OPTIONS, PUT, PATCH, DELETE"
+    );
+    res.setHeader(
+        "Access-Control-Allow-Headers",
+        "Origin, X-Requested-With,content-type,Accept"
+    );
+    next();
+});
 var http_ = require('http').createServer(app);
 var io = new Server(http_, {
     cors: {
@@ -391,7 +408,7 @@ app.get('/', function (req, res) {
     console.log("");
 });
 
-http_.listen(3009, function () {
+http_.listen(3000, function () {
     var host = http_.address().address
     var port = http_.address().port
     console.log('App listening at https://%s:%s', host, port)
