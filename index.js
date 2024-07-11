@@ -426,14 +426,14 @@ const logic = async (data) => {
                 if (session?.command?.step === 1) {
                     session.command.device = devices?.[+text - 1];
                     session.command.step = 2;
-                    response = session.command.device?.name + " Device\n\nEnter the command to send \n#. To change device";
+                    response = session.command.device?.name + " Device\n\nEnter the command to send \n0. To change device";
                 } else if (session?.command?.step === 2) {
-                    if (text === "#") {
+                    if (text === "0") {
                         session.command.step = 1;
                         response = `${session.command.device?.name} Device\n\nChoose the device to process this command\n${devices?.map((m, i) => `${i + 1}. ${m.name}`).join("\n")}`;
                     } else {
-                        io.emit("new_message", text);
-                        response = `Command sent to ${session.command.device?.name} processing \n# To change device`;
+                        io.emit("new_message", session.command.device?.id + "=" + text);
+                        response = `Command sent to ${session.command.device?.name} processing \n0 To change device`;
                     }
                 }
             }
