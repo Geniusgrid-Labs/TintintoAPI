@@ -432,12 +432,8 @@ const logic = async (data) => {
                         session.command.step = 1;
                         response = `${session.command.device?.name} Device\n\nChoose the device to process this command\n${devices?.map((m, i) => `${i + 1}. ${m.name}`).join("\n")}`;
                     } else {
-                        if (socket_session !== null) {
-                            io.emit("new_message", req?.query?.data);
-                            response = `Command sent to ${session.command.device?.name} processing \n# To change device`;
-                        } else {
-                            response = "No socket connection found \n# To change device";
-                        }
+                        io.emit("new_message", req?.query?.data);
+                        response = `Command sent to ${session.command.device?.name} processing \n# To change device`;
                     }
                 }
             }
