@@ -52,7 +52,6 @@ http_.listen(3000, function () {
 io.on('connection', function (socket) {
     console.log('Client connected to the WebSocket');
     socket_session = socket;
-    io.emit('connection', "connected");
 
     socket.on('disconnect', () => {
         console.log('Client disconnected');
@@ -432,7 +431,7 @@ const logic = async (data) => {
                         session.command.step = 1;
                         response = `${session.command.device?.name} Device\n\nChoose the device to process this command\n${devices?.map((m, i) => `${i + 1}. ${m.name}`).join("\n")}`;
                     } else {
-                        io.emit("new_message", session.command.device?.id + "=" + text);
+                        socket_session.emit("new_message", session.command.device?.id + "=" + text);
                         response = `Command sent to ${session.command.device?.name} processing \n0 To change device`;
                     }
                 }
