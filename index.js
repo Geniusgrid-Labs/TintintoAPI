@@ -432,7 +432,7 @@ const logic = async (data) => {
                         session.command.step = 1;
                         response = `${session.command.device?.name} Device\n\nChoose the device to process this command\n${devices?.map((m, i) => `${i + 1}. ${m.name}`).join("\n")}`;
                     } else {
-                        io.emit("new_message", req?.query?.data);
+                        io.emit("new_message", text);
                         response = `Command sent to ${session.command.device?.name} processing \n# To change device`;
                     }
                 }
