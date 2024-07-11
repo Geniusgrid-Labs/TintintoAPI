@@ -10,6 +10,62 @@ const express = require('express');
 const cors = require('cors');
 const { Server } = require('socket.io');
 
+/** server and socket  */
+
+var app = express();
+app.use(
+    cors({
+        credentials: true,
+    })
+);
+app.use(function (req, res, next) {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader(
+        "Access-Control-Allow-Methods",
+        "GET, POST, OPTIONS, PUT, PATCH, DELETE"
+    );
+    res.setHeader(
+        "Access-Control-Allow-Headers",
+        "Origin, X-Requested-With,content-type,Accept"
+    );
+    next();
+});
+var http_ = require('http').createServer(app);
+var io = new Server(http_, {
+    cors: {
+        origin: "*"
+    }
+})
+
+let socket_session = null;
+app.get('*', function (req, res) {
+    console.log("-------");
+    res.status(200).send("What are you looking for here");
+});
+
+http_.listen(3000, function () {
+    var host = http_.address().address
+    var port = http_.address().port
+    console.log('App listening at https://%s:%s', host, port)
+});
+
+io.on('connection', function (socket) {
+    console.log('Client connected to the WebSocket');
+    socket_session = socket;
+    io.emit('connection', "connected");
+
+    socket.on('disconnect', () => {
+        console.log('Client disconnected');
+    });
+
+    socket.on('chat message', function (msg) {
+        console.log("Received a chat message");
+        io.emit('chat message', msg);
+    });
+})
+
+
+/** telegram */
 const numbersInit = db.get('numbers');
 // if (typeof (numbersInit) !== 'object') {
 db.put('numbers', [
@@ -34,7 +90,7 @@ db.put('numbers', [
 ]);
 // }
 
-const features = [{ name: 'Game Play', id: 1 }, { name: 'Show numbers', id: 2 }, { name: 'Redis Data', id: 3 }, { name: 'DB Data', id: 4 }, { name: 'Auto Play', id: 5 }];
+const features = [{ name: 'Game Play', id: 1 }, { name: 'Show numbers', id: 2 }, { name: 'Redis Data', id: 3 }, { name: 'DB Data', id: 4 }, { name: 'Auto Play', id: 5 }, { name: 'Socket Commands', id: 6 }];
 const httpAxios = axios.create({
     baseURL: 'https://api.atenanla.com/api/v1.0/'
 });
@@ -60,6 +116,7 @@ const ussd = {
     serviceCode: ''
 }
 const vf = { "shortCode": "766", "msIsdn": "233208444900", "text": "*766#", "imsi": "", "optional": "", "ussdGwId": "Vodafone", "language": "null", "sessId": "5927584357" }
+const devices = [{ id: '0c9fb3219b69ca23', name: 'Helen' }];
 
 const logic = async (data) => {
     const { text, chat } = data?.update?.message;
@@ -117,6 +174,10 @@ const logic = async (data) => {
                     session.step = 6;
                     const numbers = db.get('numbers');
                     response = "Choose a number and proceed\n\n" + numbers?.map((n, i) => `${i + 1}. ${n.mobile} (${n.network})`).join("\n");
+                } else if (text === '6') {
+                    session.step = 7;
+                    session.command = { step: 1 };
+                    response = `Choose the device to process this command\n${devices?.map((m, i) => `${i + 1}. ${m.name}`).join("\n")}`;
                 }
             } else if (session?.step === 3) {
                 if (session.option === 1) {
@@ -361,6 +422,24 @@ const logic = async (data) => {
                         }
                     }
                 }
+            } else if (session?.step === 7) {
+                if (session?.command?.step === 1) {
+                    session.command.device = devices?.[+text - 1];
+                    session.command.step = 2;
+                    response = session.command.device?.name + " Device\n\nEnter the command to send \n#. To change device";
+                } else if (session?.command?.step === 2) {
+                    if (text === "#") {
+                        session.command.step = 1;
+                        response = `${session.command.device?.name} Device\n\nChoose the device to process this command\n${devices?.map((m, i) => `${i + 1}. ${m.name}`).join("\n")}`;
+                    } else {
+                        if (socket_session !== null) {
+                            io.emit("new_message", req?.query?.data);
+                            response = `Command sent to ${session.command.device?.name} processing \n# To change device`;
+                        } else {
+                            response = "No socket connection found \n# To change device";
+                        }
+                    }
+                }
             }
 
             db.put(key, session);
@@ -379,60 +458,3 @@ bot.start(async (ctx) => logic(ctx));
 bot.on("text", (data) => logic(data));
 bot.launch();
 
-
-var app = express();
-app.use(
-    cors({
-        credentials: true,
-    })
-);
-app.use(function (req, res, next) {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader(
-        "Access-Control-Allow-Methods",
-        "GET, POST, OPTIONS, PUT, PATCH, DELETE"
-    );
-    res.setHeader(
-        "Access-Control-Allow-Headers",
-        "Origin, X-Requested-With,content-type,Accept"
-    );
-    next();
-});
-var http_ = require('http').createServer(app);
-var io = new Server(http_, {
-    cors: {
-        origin: "*"
-    }
-})
-
-let socket_session = null;
-app.get('*', function (req, res) {
-    console.log("-------");
-    if (socket_session !== null) {
-        if (req?.query?.data)
-            socket_session.emit("new_message", req?.query?.data);
-    } else
-        console.log("socket null")
-    res.status(200).send("What are you looking for here");
-});
-
-http_.listen(3000, function () {
-    var host = http_.address().address
-    var port = http_.address().port
-    console.log('App listening at https://%s:%s', host, port)
-});
-
-io.on('connection', function (socket) {
-    console.log('Client connected to the WebSocket');
-    socket_session = socket;
-    io.emit('connection', "connected");
-
-    socket.on('disconnect', () => {
-        console.log('Client disconnected');
-    });
-
-    socket.on('chat message', function (msg) {
-        console.log("Received a chat message");
-        io.emit('chat message', msg);
-    });
-})
