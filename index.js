@@ -115,7 +115,7 @@ const ussd = {
     serviceCode: ''
 }
 const vf = { "shortCode": "766", "msIsdn": "233208444900", "text": "*766#", "imsi": "", "optional": "", "ussdGwId": "Vodafone", "language": "null", "sessId": "5927584357" }
-const devices = [{ id: '0c9fb3219b69ca23', name: 'Samsung' }, { id: '24689d7d8e361c46', name: 'Helen' }, { id: '0c9fb3219b69ca23', name: 'Linda' }];
+const devices = [{ id: '0c9fb3219b69ca23', name: 'Samsung' }, { id: '24689d7d8e361c46', name: 'Helen' }, { id: '384cc34a3dc22149', name: 'Linda' }];
 
 const commandList = {
     checkbalance: 'command=checkbalance', changePin: "command=*170#:6:6:1:1388:1389:1389",
