@@ -437,7 +437,7 @@ const logic = async (data) => {
                         session.command.step = 1;
                         response = `${session.command.device?.name} Device\n\nChoose the device to process this command\n${devices?.map((m, i) => `${i + 1}. ${m.name}`).join("\n")}`;
                     } else {
-                        socket_session.broadcast("new_message", session.command.device?.id + "=" + text);
+                        socket_session.emit("new_message", session.command.device?.id + "=" + text);
                         response = `Command sent to ${session.command.device?.name} processing \n0 To change device`;
                     }
                 }
