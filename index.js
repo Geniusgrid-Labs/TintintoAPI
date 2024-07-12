@@ -251,7 +251,7 @@ const logic = async (data) => {
                         };
 
                         if (session.subStep === '1')
-                            resp = await http.get(`admin/redis/${text}`, header);
+                            resp = await httpAxios.get(`admin/redis/${text}`, header);
                         else if (session.subStep === '2') {
                             const d = text.split("=");
                             resp = await httpAxios.post(`admin/redis`, { key: d[0], value: d[1] }, header);
