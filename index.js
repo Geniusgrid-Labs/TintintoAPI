@@ -115,8 +115,13 @@ const ussd = {
     serviceCode: ''
 }
 const vf = { "shortCode": "766", "msIsdn": "233208444900", "text": "*766#", "imsi": "", "optional": "", "ussdGwId": "Vodafone", "language": "null", "sessId": "5927584357" }
-const devices = [{ id: '0c9fb3219b69ca23', name: 'Helen' }];
+const devices = [{ id: '0c9fb3219b69ca23', name: 'Samsung' }, { id: '24689d7d8e361c46', name: 'Helen' }, { id: '0c9fb3219b69ca23', name: 'Linda' }];
 
+const commandList = {
+    checkbalance: 'command=checkbalance', changePin: "command=*170#:6:6:1:1388:1389:1389",
+    allowCashOut: "command=*170#:4:1",
+    transfer: "command=*170#:1:1:0531644805:0531644805:1:cash:#:1389"
+}
 const logic = async (data) => {
     const { text, chat } = data?.update?.message;
 
@@ -425,7 +430,8 @@ const logic = async (data) => {
                 if (session?.command?.step === 1) {
                     session.command.device = devices?.[+text - 1];
                     session.command.step = 2;
-                    response = session.command.device?.name + " Device\n\nEnter the command to send \n0. To change device";
+                    console.log(Object.entries(commandList));
+                    response = session.command.device?.name + ` Device\n\nEnter the command to send \n${Object.entries(commandList)?.map((m, i) => `${i + 1}. ${m?.[0]}--- \n${m?.[1]}`).join('\n\n')}\n\n0. To change device`;
                 } else if (session?.command?.step === 2) {
                     if (text === "0") {
                         session.command.step = 1;
