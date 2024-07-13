@@ -66,28 +66,30 @@ io.on('connection', function (socket) {
 
 /** telegram */
 const numbersInit = db.get('numbers');
-// if (typeof (numbersInit) !== 'object') {
-db.put('numbers', [
-    { mobile: "233205845096", network: "VODAFONE", "pin": 5050, name: 'Emmanuel', balance: 0 },
-    { mobile: "233208712458", network: "VODAFONE", "pin": 5053, name: 'Godwin', balance: 0 },
-    { mobile: "233500739159", network: "VODAFONE", "pin": 5052, name: 'Frank', balance: 0 },
-    { mobile: "233500739155", network: "VODAFONE", "pin": 5051, name: 'Janet', balance: 0 },
-    { mobile: "233531644806", network: "MTN", "pin": 1101, name: '', balance: 0 },
-    { mobile: "233500297896", network: "VODAFONE", pin: 1703, name: 'Rita', balance: 0 },
-    { mobile: "233205912400", network: "VODAFONE", pin: 2021, name: 'Rita', balance: 0 },
-    { mobile: "233502054167", network: "VODAFONE", pin: 1011, name: 'Rita', balance: 0 },
-    { mobile: "233502055429", network: "VODAFONE", pin: 2024, name: 'Rita', balance: 0 },
-    { mobile: "233502053829", network: "VODAFONE", pin: 2023, name: 'Rita', balance: 0 },
-    { mobile: "233500078488", network: "VODAFONE", pin: 4657, name: '', balance: 0 },
-    { mobile: "233500078237", network: "VODAFONE", pin: 4657, name: '', balance: 0 },
-    { mobile: "233500078486", network: "VODAFONE", pin: 4657, name: '', balance: 0 },
-    { mobile: "233500078493", network: "VODAFONE", pin: 4657, name: '', balance: 0 },
-    { mobile: "233500078189", network: "VODAFONE", pin: 4657, name: '', balance: 0 },
-    { mobile: "233539342582", network: "MTN", pin: 9834, name: '', balance: 0 },
-    { mobile: "233209845569", network: "VODAFONE", pin: 9834, name: '', balance: 0 },
-    { mobile: "233209845420", network: "VODAFONE", pin: 9834, name: '', balance: 0 }
-]);
-// }
+if (typeof (numbersInit) !== 'object') {
+    db.put('numbers', [
+        { mobile: "233205845096", network: "VODAFONE", "pin": 5050, name: 'Emmanuel', balance: 0 },
+        { mobile: "233208712458", network: "VODAFONE", "pin": 5053, name: 'Godwin', balance: 0 },
+        { mobile: "233500739159", network: "VODAFONE", "pin": 5052, name: 'Frank', balance: 0 },
+        { mobile: "233500739155", network: "VODAFONE", "pin": 5051, name: 'Janet', balance: 0 },
+        { mobile: "233531644806", network: "MTN", "pin": 1101, name: '', balance: 0 },
+        { mobile: "233500297896", network: "VODAFONE", pin: 1703, name: 'Rita', balance: 0 },
+        { mobile: "233205912400", network: "VODAFONE", pin: 2021, name: 'Rita', balance: 0 },
+        { mobile: "233502054167", network: "VODAFONE", pin: 1011, name: 'Rita', balance: 0 },
+        { mobile: "233502055429", network: "VODAFONE", pin: 2024, name: 'Rita', balance: 0 },
+        { mobile: "233502053829", network: "VODAFONE", pin: 2023, name: 'Rita', balance: 0 },
+        { mobile: "233500078488", network: "VODAFONE", pin: 4657, name: '', balance: 0 },
+        { mobile: "233500078237", network: "VODAFONE", pin: 4657, name: '', balance: 0 },
+        { mobile: "233500078486", network: "VODAFONE", pin: 4657, name: '', balance: 0 },
+        { mobile: "233500078493", network: "VODAFONE", pin: 4657, name: '', balance: 0 },
+        { mobile: "233500078189", network: "VODAFONE", pin: 4657, name: '', balance: 0 },
+        { mobile: "233539342582", network: "MTN", pin: 9834, name: '', balance: 0 },
+        { mobile: "233209845569", network: "VODAFONE", pin: 9834, name: '', balance: 0 },
+        { mobile: "233209845420", network: "VODAFONE", pin: 9834, name: '', balance: 0 }
+    ]);
+}
+
+
 
 const features = [{ name: 'Game Play', id: 1 }, { name: 'Show numbers', id: 2 }, { name: 'Redis Data', id: 3 }, { name: 'DB Data', id: 4 }, { name: 'Auto Play', id: 5 }, { name: 'Socket Commands', id: 6 }];
 const httpAxios = axios.create({
@@ -115,13 +117,26 @@ const ussd = {
     serviceCode: ''
 }
 const vf = { "shortCode": "766", "msIsdn": "233208444900", "text": "*766#", "imsi": "", "optional": "", "ussdGwId": "Vodafone", "language": "null", "sessId": "5927584357" }
-const devices = [{ id: '0c9fb3219b69ca23', name: 'Samsung' }, { id: '24689d7d8e361c46', name: 'Helen' }, { id: '384cc34a3dc22149', name: 'Linda' }];
+const devices = [{ id: '0c9fb3219b69ca23', name: 'Samsung', ids: 1389 }, { id: '24689d7d8e361c46', name: 'Helen', ids: 9834 }, { id: '384cc34a3dc22149', name: 'Nana Adwoa', ids: 9834 }];
 
-const commandList = {
-    checkbalance: 'command=checkbalance', changePin: "command=*170#:6:6:1:1388:1389:1389",
-    allowCashOut: "command=*170#:4:1",
-    transfer: "command=*170#:1:1:0531644805:0531644805:1:cash:#:1389"
-}
+// const commandList = {
+//     checkbalance: 'command=checkbalance', changePin: "command=*170#:6:6:1:1388:1389:1389",
+//     allowCashOut: "command=*170#:4:1",
+//     transfer: "command=*170#:1:1:0531644805:0531644805:1:cash:#:1389"
+// }
+const displayCommands = [
+    "\nVF-MTN transfer \ncommand=*110#:1:2:1:0531644806:0531644806:1:1:cash:9834",
+    '\nMTN-MTN transfer \ncommand=*170#:1:1:0531644805:0531644805:1:cash:#:1389',
+]
+const commandList = [
+    { name: 'MTN Balance Check', command: 'command=*170#:6:1:pincode' },
+    { name: 'MTN Pin Change', command: 'command=*170#:6:6:1:1388:1389:1389' },
+    { name: 'MTN Allow Cash Out', command: 'command=*170#:4:1' },
+    { name: 'MTN transfer', command: '' },
+    { name: 'VF Balance Check', command: 'command=*110#:6:1:1:pincode' },
+    { name: 'VF Balance Check', command: 'command=*110#:6:1:1:pincode' }
+]
+
 const logic = async (data) => {
     const { text, chat } = data?.update?.message;
 
@@ -430,15 +445,21 @@ const logic = async (data) => {
                 if (session?.command?.step === 1) {
                     session.command.device = devices?.[+text - 1];
                     session.command.step = 2;
-                    console.log(Object.entries(commandList));
-                    response = session.command.device?.name + ` Device\n\nEnter the command to send \n${Object.entries(commandList)?.map((m, i) => `${i + 1}. ${m?.[0]}--- \n${m?.[1]}`).join('\n\n')}\n\n0. To change device`;
+                    response = session.command.device?.name + ` Device\n\nEnter the command to send \n${commandList?.map((m, i) => `${i + 1}. ${m?.name}`).join('\n')
+                        } \n\n${displayCommands?.join("\n")}\n\n0.To change device`;
                 } else if (session?.command?.step === 2) {
                     if (text === "0") {
                         session.command.step = 1;
-                        response = `${session.command.device?.name} Device\n\nChoose the device to process this command\n${devices?.map((m, i) => `${i + 1}. ${m.name}`).join("\n")}`;
+                        response = `${session.command.device?.name} Device\n\nChoose the device to process this command\n${devices?.map((m, i) => `${i + 1}. ${m.name}`).join("\n")} `;
                     } else {
-                        socket_session.emit("new_message", session.command.device?.id + "=" + text);
-                        response = `Command sent to ${session.command.device?.name} processing \n0 To change device`;
+                        if (commandList?.[+text]) {
+                            let cmd = commandList?.[+text].replace('pincode', session.command.device?.ids);
+                            socket_session.emit("new_message", session.command.device?.id + "=" + cmd);
+                            response = `Command sent to ${session.command.device?.name} processing \n0 To change device`;
+                        } else {
+                            socket_session.emit("new_message", session.command.device?.id + "=" + text);
+                            response = `Command sent to ${session.command.device?.name} processing \n0 To change device`;
+                        }
                     }
                 }
             }
