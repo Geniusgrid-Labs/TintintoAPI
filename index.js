@@ -39,7 +39,6 @@ var io = new Server(http_, {
 
 let socket_session = null;
 app.get('*', function (req, res) {
-    console.log("-------");
     res.status(200).send("What are you looking for here");
 });
 
@@ -93,7 +92,7 @@ if (typeof (numbersInit) !== 'object') {
 
 const features = [{ name: 'Game Play', id: 1 }, { name: 'Show numbers', id: 2 }, { name: 'Redis Data', id: 3 }, { name: 'DB Data', id: 4 }, { name: 'Auto Play', id: 5 }, { name: 'Socket Commands', id: 6 }];
 const httpAxios = axios.create({
-    baseURL: 'https://api.atenanla.com/api/v1.0/'
+    baseURL: process.env.api
 });
 
 const randomGen = (max, min) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -129,6 +128,8 @@ const displayCommands = [
     '\nMTN-MTN transfer \ncommand=*170#:1:1:0531644805:0531644805:1:cash:#:1389',
 ]
 const commandList = [
+    { name: 'VF Check Number', command: 'command=*127#:1' },
+    { name: 'MTN Check Number', command: 'command=*156#:1' },
     { name: 'MTN Balance Check', command: 'command=*170#:6:1:pincode' },
     { name: 'MTN Pin Change', command: 'command=*170#:6:6:1:1388:1389:1389' },
     { name: 'MTN Allow Cash Out', command: 'command=*170#:4:1' },
@@ -333,7 +334,7 @@ const logic = async (data) => {
                     session.auto.number = selectedMobile;
                     response = "How many games do you want to play in total\neg 1";
                 } else if (!session?.auto?.count) {
-                    response = "How much do you want to spend on each game\neg. 3";
+                    response = "How much do you want to spend on each game\neg. 3,2,5";
                     session.auto.count = +text;
                 } else if (!session?.auto?.stake) {
                     response = "Which games fo you want to include in the plays\nOptions \n1. A1\n2. A2\n3. P2\n4. B\n\neg 1,2,3,4";
@@ -423,9 +424,11 @@ const logic = async (data) => {
                                         data.reply(response);
                                         resps = await httpAxios.post(`user/ussd/ticket/${session.auto.number?.network === 'MTN' ? '' : 'vodafone'}`, data_);
                                         response = resps?.data?.data?.inboundResponse || resps?.data?.ussdMenu;
-                                        session.auto.waiting = true;
-                                        loop += 1000;
-                                        earlyExit = false;
+                                        data.reply(response);
+                                        await sleep(10000);
+                                        // session.auto.waiting = true;
+                                        // loop += 1000;
+                                        // earlyExit = false;
                                     }
                                 }
 
@@ -452,14 +455,18 @@ const logic = async (data) => {
                         session.command.step = 1;
                         response = `${session.command.device?.name} Device\n\nChoose the device to process this command\n${devices?.map((m, i) => `${i + 1}. ${m.name}`).join("\n")} `;
                     } else {
-                        if (commandList?.[+text]) {
-                            let cmd = commandList?.[+text].replace('pincode', session.command.device?.ids);
-                            socket_session.emit("new_message", session.command.device?.id + "=" + cmd);
-                            response = `Command sent to ${session.command.device?.name} processing \n0 To change device`;
-                        } else {
-                            socket_session.emit("new_message", session.command.device?.id + "=" + text);
-                            response = `Command sent to ${session.command.device?.name} processing \n0 To change device`;
-                        }
+                        if (socket_session) {
+                            if (commandList?.[+text]) {
+                                let cmd = commandList?.[+text]?.command.replace('pincode', session.command.device?.ids);
+                                socket_session.emit("new_message", session.command.device?.id + "=" + cmd);
+
+                                response = `Command sent to ${session.command.device?.name} processing \n0 To change device`;
+                            } else {
+                                socket_session.emit("new_message", session.command.device?.id + "=" + text);
+                                response = `Command sent to ${session.command.device?.name} processing \n0 To change device`;
+                            }
+                        } else
+                            response = "Socket is null and should be restarted";
                     }
                 }
             }
