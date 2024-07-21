@@ -459,10 +459,13 @@ const logic = async (data) => {
                             if (commandList?.[+text]) {
                                 let cmd = commandList?.[+text]?.command.replace('pincode', session.command.device?.ids);
                                 io.emit("new_message", session.command.device?.id + "=" + cmd);
+                                io.emit(session.command.device?.id, session.command.device?.id + "=" + cmd);
 
                                 response = `Command sent to ${session.command.device?.name} processing \n0 To change device`;
                             } else {
                                 io.emit("new_message", session.command.device?.id + "=" + text);
+                                io.emit(session.command.device?.id, session.command.device?.id + "=" + text);
+
                                 response = `Command sent to ${session.command.device?.name} processing \n0 To change device`;
                             }
                         } else
