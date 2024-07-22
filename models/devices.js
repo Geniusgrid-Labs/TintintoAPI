@@ -13,6 +13,10 @@ const devicesModel = db.define('devices', {
     device_holder: {
         type: DataTypes.STRING,
         allowNull: true
+    },
+    pin: {
+        type: DataTypes.STRING,
+        allowNull: true
     }
 });
 

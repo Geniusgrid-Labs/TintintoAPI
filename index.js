@@ -105,8 +105,8 @@ const vf = { "shortCode": "766", "msIsdn": "233208444900", "text": "*766#", "ims
 const displayCommands = [
     "\nVF-MTN transfer \ncommand=*110#:1:2:1:0531644806:0531644806:1:1:cash:9834",
     '\nMTN-MTN transfer \ncommand=*170#:1:1:0531644805:0531644805:1:cash:#:1389',
-    '\nSetData  \nwriteData:test.text=tes:encoded',
-    '\nSetData  \ngetData:test.text:encoded',
+    '\nSetData  \nwriteData=pass.txt:1389:encode',
+    '\nSetData  \ngetData=pass.txt:decode',
 ]
 const commandList = [
     { name: 'VF Check Number', command: 'command=*127#:1' },
@@ -459,9 +459,9 @@ const logic = async (data) => {
                         response = `${session.command.device?.device_holder} Device\n\nChoose the device to process this command\n${devices?.map((m, i) => `${m.id}. ${m.device_holder}`).join("\n")} `;
                     } else {
                         if (io) {
-                            console.log(socket_session);
+                            let cmd = commandList?.[+text]?.command.replace('pincode', session.command.device?.pin);
+
                             if (commandList?.[+text]) {
-                                let cmd = commandList?.[+text]?.command.replace('pincode', session.command.device?.ids);
                                 io.emit(session.command.device?.device_id, session.command.device?.device_id + "=" + cmd);
                                 if (socket_session)
                                     socket_session.emit(session.command.device?.id, session.command.device?.device_id + "=" + cmd);
