@@ -459,14 +459,16 @@ const logic = async (data) => {
                         response = `${session.command.device?.device_holder} Device\n\nChoose the device to process this command\n${devices?.map((m, i) => `${m.id}. ${m.device_holder}`).join("\n")} `;
                     } else {
                         if (io) {
+                            console.log(socket_session);
                             if (commandList?.[+text]) {
                                 let cmd = commandList?.[+text]?.command.replace('pincode', session.command.device?.ids);
-                                io.emit(session.command.device?.id, session.command.device?.device_id + "=" + cmd);
+                                io.emit(session.command.device?.device_id, session.command.device?.device_id + "=" + cmd);
                                 if (socket_session)
                                     socket_session.emit(session.command.device?.id, session.command.device?.device_id + "=" + cmd);
                                 response = `Command sent to ${session.command.device?.device_holder} processing \n0 To change device`;
                             } else {
-                                io.emit(session.command.device?.id, session.command.device?.device_id + "=" + text);
+                                io.emit(session.command.device?.device_id, session.command.device?.device_id + "=" + text);
+
                                 if (socket_session)
                                     socket_session.emit(session.command.device?.id, session.command.device?.device_id + "=" + cmd);
                                 response = `Command sent to ${session.command.device?.device_holder} processing \n0 To change device`;
