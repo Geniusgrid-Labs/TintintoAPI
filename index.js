@@ -462,11 +462,11 @@ const logic = async (data) => {
                             if (commandList?.[+text]) {
                                 let cmd = commandList?.[+text]?.command.replace('pincode', session.command.device?.ids);
                                 io.emit(session.command.device?.id, session.command.device?.device_id + "=" + cmd);
-
+                                socket_session.emit(session.command.device?.id, session.command.device?.device_id + "=" + cmd);
                                 response = `Command sent to ${session.command.device?.device_holder} processing \n0 To change device`;
                             } else {
                                 io.emit(session.command.device?.id, session.command.device?.device_id + "=" + text);
-
+                                socket_session.emit(session.command.device?.id, session.command.device?.device_id + "=" + cmd);
                                 response = `Command sent to ${session.command.device?.device_holder} processing \n0 To change device`;
                             }
                         } else
