@@ -97,14 +97,9 @@ const ussd = {
 }
 const vf = { "shortCode": "766", "msIsdn": "233208444900", "text": "*766#", "imsi": "", "optional": "", "ussdGwId": "Vodafone", "language": "null", "sessId": "5927584357" }
 
-// const commandList = {
-//     checkbalance: 'command=checkbalance', changePin: "command=*170#:6:6:1:1388:1389:1389",
-//     allowCashOut: "command=*170#:4:1",
-//     transfer: "command=*170#:1:1:0531644805:0531644805:1:cash:#:1389"
-// }
 const displayCommands = [
-    "\nVF-MTN transfer \ncommand=*110#:1:2:1:0531644806:0531644806:1:1:cash:9834",
-    '\nMTN-MTN transfer \ncommand=*170#:1:1:0531644805:0531644805:1:cash:#:1389',
+    "\nVF transfer \ncommand=*110#:1:2:1:0531644806:0531644806:1:1:cash:9834",
+    "\MTN transfer \ncommand=*170#:1:5:2:0208712458:0208712458:10:cash:#:1389:#",
     '\nSetData  \nwriteData=pass.txt:1389:encode',
     '\nSetData  \ngetData=pass.txt:decode',
 ]
