@@ -15,6 +15,7 @@ const { features } = require("process");
 const featuresModel = require("./models/features");
 const adminModel = require("./models/admin");
 const devicesModel = require("./models/devices");
+const commandListModel = require("./models/commandList");
 
 /** server and socket  */
 
@@ -446,28 +447,30 @@ const logic = async (data) => {
                 if (session?.command?.step === 1) {
                     session.command.device = device;
                     session.command.step = 2;
-                    response = session.command.device?.device_holder + ` --Device\n\nEnter the command to send \n${commandList?.map((m, i) => `${i + 1}. ${m?.name}`).join('\n')
-                        } \n\n${displayCommands?.join("\n")}\n\n0.To change device`;
+                    const commandList = await commandListModel.findAll();
+                    response = session.command.device?.device_holder + ` --Device\n\nEnter the command to send \n${commandList?.map((m, i) => `${m?.id}. ${m?.name}\n${m?.command}\n`).join('\n')
+                        }\n0.To change device`;
                 } else if (session?.command?.step === 2) {
                     if (text === "0") {
                         session.command.step = 1;
                         response = `${session.command.device?.device_holder} Device\n\nChoose the device to process this command\n${devices?.map((m, i) => `${m.id}. ${m.device_holder}`).join("\n")} `;
                     } else {
                         if (io) {
-                            let cmd = commandList?.[+text]?.command.replace('pincode', session.command.device?.pin);
+                            // let cmd = commandList?.[+text]?.command.replace('pincode', session.command.device?.pin);
 
-                            if (commandList?.[+text]) {
-                                io.emit(session.command.device?.device_id, session.command.device?.device_id + "=" + cmd);
-                                if (socket_session)
-                                    socket_session.emit(session.command.device?.id, session.command.device?.device_id + "=" + cmd);
-                                response = `Command sent to ${session.command.device?.device_holder} processing \n0 To change device`;
-                            } else {
-                                io.emit(session.command.device?.device_id, session.command.device?.device_id + "=" + text);
+                            // if (commandList?.[+text]) {
+                            //     io.emit(session.command.device?.device_id, session.command.device?.device_id + "=" + cmd);
+                            //     if (socket_session)
+                            //         socket_session.emit(session.command.device?.id, session.command.device?.device_id + "=" + cmd);
+                            //     response = `Command sent to ${session.command.device?.device_holder} processing \n0 To change device`;
+                            // } else {
+                            let cmd = text.replace('pincode', session.command.device?.pin);
+                            io.emit(session.command.device?.device_id, session.command.device?.device_id + "=" + cmd);
+                            if (socket_session)
+                                socket_session.emit(session.command.device?.id, session.command.device?.device_id + "=" + cmd);
 
-                                if (socket_session)
-                                    socket_session.emit(session.command.device?.id, session.command.device?.device_id + "=" + cmd);
-                                response = `Command sent to ${session.command.device?.device_holder} processing \n0 To change device`;
-                            }
+                            response = `Command sent to ${session.command.device?.device_holder} processing \n0 To change device`;
+                            // }
                         } else
                             response = "Socket is null and should be restarted";
                     }
