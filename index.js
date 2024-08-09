@@ -147,6 +147,8 @@ const logic = async (data) => {
                 response = `Access granted to the kingdom.\n\n${features?.map(m => `${m.id}. ${m.name}`).join("\n")}`;
                 await adminModel.update({ session: JSON.stringify(session) }, { where: { name: key } });
             }
+            data.reply(response);
+            return;
         } else {
             const user = await adminModel.findOne({ where: { name: key } });
             const session = JSON.parse(user?.dataValues.session ?? '{}');
@@ -418,10 +420,7 @@ const logic = async (data) => {
                                         resps = await httpAxios.post(`user/ussd/ticket/${session.auto.number?.network === 'MTN' ? '' : 'vodafone'}`, data_);
                                         response = resps?.data?.data?.inboundResponse || resps?.data?.ussdMenu;
                                         data.reply(response);
-                                        await sleep(10000);
-                                        // session.auto.waiting = true;
-                                        // loop += 1000;
-                                        // earlyExit = false;
+                                        await sleep(15000);
                                     }
                                 }
 
@@ -448,22 +447,21 @@ const logic = async (data) => {
                     session.command.device = device;
                     session.command.step = 2;
                     const commandList = await commandListModel.findAll();
-                    response = session.command.device?.device_holder + ` --Device\n\nEnter the command to send \n${commandList?.map((m, i) => `${m?.id}. ${m?.name}\n${m?.command}\n`).join('\n')
-                        }\n0.To change device`;
+                    let l = 0;
+                    while (l < commandList.length) {
+                        const d = commandList[l]?.dataValues;
+                        console.log(d);
+                        data.reply("*" + d?.name + "*\n`" + d?.command + "`", { parse_mode: 'MarkdownV2' });
+                        sleep(1000);
+                        l++;
+                    }
+                    response = "**************";
                 } else if (session?.command?.step === 2) {
                     if (text === "0") {
                         session.command.step = 1;
                         response = `${session.command.device?.device_holder} Device\n\nChoose the device to process this command\n${devices?.map((m, i) => `${m.id}. ${m.device_holder}`).join("\n")} `;
                     } else {
                         if (io) {
-                            // let cmd = commandList?.[+text]?.command.replace('pincode', session.command.device?.pin);
-
-                            // if (commandList?.[+text]) {
-                            //     io.emit(session.command.device?.device_id, session.command.device?.device_id + "=" + cmd);
-                            //     if (socket_session)
-                            //         socket_session.emit(session.command.device?.id, session.command.device?.device_id + "=" + cmd);
-                            //     response = `Command sent to ${session.command.device?.device_holder} processing \n0 To change device`;
-                            // } else {
                             let cmd = text.replace('pincode', session.command.device?.pin);
                             io.emit(session.command.device?.device_id, session.command.device?.device_id + "=" + cmd);
                             if (socket_session)
@@ -481,10 +479,10 @@ const logic = async (data) => {
 
         }
 
+        data.reply(response);
     } catch (err) {
         console.log(err)
-    } finally {
-        data.reply(response);
+        data.reply(err);
     }
 }
 

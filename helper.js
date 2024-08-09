@@ -5,3 +5,8 @@ const msisdnModel = require('./models/msisdn');
 module.exports.DBCheck = () => {
 
 }
+
+module.exports.sleep = () => {
+    const end = Date.now() + ms;
+    while (Date.now() < end) { /* do nothing */ }
+}
