@@ -447,14 +447,16 @@ const logic = async (data) => {
                     session.command.device = device;
                     session.command.step = 2;
                     const commandList = await commandListModel.findAll();
-                    let l = 0;
-                    while (l < commandList.length) {
-                        const d = commandList[l]?.dataValues;
-                        console.log(d);
-                        data.reply("*" + d?.name + "*\n`" + d?.command + "`", { parse_mode: 'MarkdownV2' });
-                        sleep(1000);
-                        l++;
-                    }
+                    const list = commandList?.sort()?.map(({ dataValues }) => "*" + dataValues?.name + "*\n`" + dataValues?.command + "`").join("\n")
+                    // let l = 0;
+                    // while (l < commandList.length) {
+                    //     const d = commandList[l]?.dataValues;
+                    //     console.log(d);
+                    //     data.reply("*" + d?.name + "*\n`" + d?.command + "`", { parse_mode: 'MarkdownV2' });
+                    //     sleep(1000);
+                    //     l++;
+                    // }
+                    data.reply(list, { parse_mode: 'MarkdownV2' });
                     response = "**************";
                 } else if (session?.command?.step === 2) {
                     if (text === "0") {
