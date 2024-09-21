@@ -133,7 +133,16 @@ const logic = async (data) => {
         const key = `${chat?.id}`;
 
 
-        if (text === '#') {
+        if (text.startsWith("customerCommand")) {
+            const cmd = text.split("|");
+            if (cmd?.[1] === 'registerDevice')
+                msisdnModel.update({ device_id: cmd?.[3] }, { where: { mobile: cmd?.[2] } });
+            else if (cmd?.[1] === 'recordBalance')
+                msisdnModel.update({ device_id: cmd?.[3] }, { where: { mobile: cmd?.[2] } });
+
+            data.reply("Completed");
+            return;
+        } else if (text === '#') {
             const user = await adminModel.findOne({ where: { name: key } });
             if (user?.dataValues?.id)
                 await adminModel.update({ session: '{}', name: key }, { where: { name: key } });
@@ -327,6 +336,13 @@ const logic = async (data) => {
 
                     const selectedMobile = numbers[+text - 1];
                     session.auto.number = selectedMobile;
+
+                    const check_ = db.get("checker");
+                    if (check_) {
+                        if (!check_.includes(selectedMobile)) {
+                            db.put("checker", `${check_},${selectedMobile}`);
+                        }
+                    }
                     response = "How many games do you want to play in total\neg 1";
                 } else if (!session?.auto?.count) {
                     response = "How much do you want to spend on each game\neg. 3,2,5";
@@ -346,7 +362,7 @@ const logic = async (data) => {
                     } else {
                         if (!session?.auto?.confirm) session.auto.confirm = ['1', 'yes', 'Yes', 'YES'].includes(text) ? 1 : 0;
 
-                        //Confirmation 
+                        //Confirmation
                         if (session?.auto.confirmData) {
                             session.auto.done++;
                             if (text === '1') {
@@ -354,6 +370,7 @@ const logic = async (data) => {
                                 const resps = await httpAxios.post(`user/ussd/ticket/${session.auto.number?.network === 'MTN' ? '' : 'vodafone'}`, session?.auto.confirmData);
                                 data.reply(resps?.data?.data?.inboundResponse || resps?.data?.ussdMenu);
                             } else data.reply("Cancelled and moving to the next");
+
                             delete session?.auto.confirmData;
                             session.auto.waiting = true;
                             await adminModel.update({ session: JSON.stringify(session) }, { where: { name: key } });

@@ -25,6 +25,10 @@ const msisdnModel = db.define('msisdn', {
     device_id: {
         type: DataTypes.INTEGER,
         allowNull: true
+    },
+    balance: {
+        type: DataTypes.STRING,
+        allowNull: true
     }
 });
 
