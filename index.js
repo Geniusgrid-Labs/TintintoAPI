@@ -16,6 +16,8 @@ const featuresModel = require("./models/features");
 const adminModel = require("./models/admin");
 const devicesModel = require("./models/devices");
 const commandListModel = require("./models/commandList");
+const routes = require("./routes");
+const { validate, setDevice } = require("./services");
 
 /** server and socket  */
 
@@ -45,6 +47,9 @@ var io = new Server(http_, {
 })
 
 let socket_session = null;
+app.use(express.json());
+// app.use('/api/v1/device', routes);
+app.post('/api/v1/device/set-device', validate, setDevice);
 app.get('*', function (req, res) {
     res.status(200).send("What are you looking for here");
 });
@@ -67,6 +72,7 @@ io.on('connection', function (socket) {
         console.log("Received a chat message");
         io.emit('chat message', msg);
     });
+
 })
 
 /**DB sync */
@@ -97,23 +103,6 @@ const ussd = {
     serviceCode: ''
 }
 const vf = { "shortCode": "766", "msIsdn": "233208444900", "text": "*766#", "imsi": "", "optional": "", "ussdGwId": "Vodafone", "language": "null", "sessId": "5927584357" }
-
-const displayCommands = [
-    "\nVF transfer \ncommand=*110#:1:2:1:0531644806:0531644806:1:1:cash:9834",
-    "\MTN transfer \ncommand=*170#:1:5:2:0208712458:0208712458:10:cash:#:1389:#",
-    '\nSetData  \nwriteData=pass.txt:1389:encode',
-    '\nSetData  \ngetData=pass.txt:decode',
-]
-const commandList = [
-    { name: 'VF Check Number', command: 'command=*127#:1' },
-    { name: 'MTN Check Number', command: 'command=*156#:1' },
-    { name: 'MTN Balance Check', command: 'command=*170#:6:1:pincode' },
-    { name: 'MTN Pin Change', command: 'command=*170#:6:6:1:1388:1389:1389' },
-    { name: 'MTN Allow Cash Out', command: 'command=*170#:4:1' },
-    { name: 'MTN transfer', command: '' },
-    { name: 'VF Balance Check', command: 'command=*110#:6:1:1:pincode' },
-    { name: 'VF Balance Check', command: 'command=*110#:6:1:1:pincode' }
-]
 
 const logic = async (data) => {
     let features = await featuresModel.findAll();
