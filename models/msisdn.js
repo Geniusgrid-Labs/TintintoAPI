@@ -29,6 +29,10 @@ const msisdnModel = db.define('msisdn', {
     balance: {
         type: DataTypes.STRING,
         allowNull: true
+    },
+    slot: {
+        type: DataTypes.INTEGER(1),
+        allowNull: true
     }
 });
 

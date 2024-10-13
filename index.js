@@ -17,8 +17,9 @@ const adminModel = require("./models/admin");
 const devicesModel = require("./models/devices");
 const commandListModel = require("./models/commandList");
 const routes = require("./routes");
-const { validate, setDevice } = require("./services");
-
+const { validate, setDevice, setBalance } = require("./services");
+const TelegramBot = require('node-telegram-bot-api');
+const bot2 = new TelegramBot(process.env.telegram_bot, { polling: false });
 /** server and socket  */
 
 var app = express();
@@ -54,23 +55,56 @@ app.get('*', function (req, res) {
     res.status(200).send("What are you looking for here");
 });
 
-http_.listen(3000, function () {
+http_.listen(process.env.PORT || 3000, function () {
     var host = http_.address().address
     var port = http_.address().port
     console.log('App listening at https://%s:%s', host, port)
 });
 
 io.on('connection', function (socket) {
-    console.log('Client connected to the WebSocket');
+    // console.log('Client connected to the WebSocket');
     socket_session = socket;
 
     socket.on('disconnect', () => {
         console.log('Client disconnected');
     });
 
-    socket.on('chat message', function (msg) {
-        console.log("Received a chat message");
-        io.emit('chat message', msg);
+    // socket.on('chat message', function (msg) {
+    //     console.log("Received a chat message");
+    //     io.emit('chat message', msg);
+    // });
+
+    socket.onAny(async (eventName, ...args) => {
+        console.log(`Received event: ${eventName}`);
+        console.log('Arguments:', args, typeof args);
+
+        // You can handle specific events here if needed
+        if (eventName === 'chat message') {
+            //     // Broadcast the message to all connected clients
+            //     io.emit('chat message', args[0]);
+        } else {
+            try {
+                const obj_ = args[0];
+                const req = {};
+                req.body = obj_;
+                const validation = await validate(req);
+                if (validation) {
+                    if (obj_.command === 'set-device')
+                        await setDevice(req);
+                    else if (obj_.command === 'set-balance') {
+                        const balance = obj_.message.match(/GHS\s+([\d.]+)/g)?.map(match => parseFloat(match.split(' ')[1]))[0];
+
+                        if (+balance) {
+                            req.body.balance = balance;
+                            await setBalance(req);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.log(err)
+            }
+        }
+
     });
 
 })
@@ -104,7 +138,46 @@ const ussd = {
 }
 const vf = { "shortCode": "766", "msIsdn": "233208444900", "text": "*766#", "imsi": "", "optional": "", "ussdGwId": "Vodafone", "language": "null", "sessId": "5927584357" }
 
+const EventEmitter = require('events');
+
+class MemoryDB extends EventEmitter {
+    constructor() {
+        super();
+        this.data = {};
+    }
+
+    set(key, value) {
+        this.data[key] = value;
+        this.emit('set', key, value);
+        return true;
+    }
+
+    get(key) {
+        return this.data[key];
+    }
+
+    delete(key) {
+        if (key in this.data) {
+            delete this.data[key];
+            this.emit('delete', key);
+            return true;
+        }
+        return false;
+    }
+
+    list() {
+        return Object.keys(this.data);
+    }
+
+    clear() {
+        this.data = {};
+        this.emit('clear');
+    }
+}
+const memDB = new MemoryDB();
+
 const logic = async (data) => {
+
     let features = await featuresModel.findAll();
     features = features?.map(m => m.dataValues);
 
@@ -121,6 +194,7 @@ const logic = async (data) => {
     try {
         const key = `${chat?.id}`;
 
+        // await bot2.sendMessage("1209002201", message);
 
         if (text.startsWith("customerCommand")) {
             const cmd = text.split("|");
@@ -326,18 +400,29 @@ const logic = async (data) => {
                     const selectedMobile = numbers[+text - 1];
                     session.auto.number = selectedMobile;
 
-                    const check_ = db.get("checker");
-                    if (check_) {
-                        if (!check_.includes(selectedMobile)) {
-                            db.put("checker", `${check_},${selectedMobile}`);
+                    let admin = await adminModel.findOne({ where: { name: key } });
+                    let header = {
+                        headers: {
+                            Authorization: `Bearer ${admin?.dataVales?.token}`
                         }
+                    };
+
+                    resp = await httpAxios.get(`admin/redis/checker`, header);
+                    const check_ = resp?.data;
+
+                    if (!String(resp?.data).includes(selectedMobile?.mobile)) {
+                        await httpAxios.post(`admin/redis`, { key: "checker", value: String(resp?.data) === 'false' ? `${selectedMobile?.mobile}` : `${String(resp?.data)},${selectedMobile?.mobile}` }, header);
+                        resp = await httpAxios.get(`admin/redis/checker`, header);
+                        console.log(resp?.data);
                     }
+
+
                     response = "How many games do you want to play in total\neg 1";
                 } else if (!session?.auto?.count) {
                     response = "How much do you want to spend on each game\neg. 3,2,5";
                     session.auto.count = +text;
                 } else if (!session?.auto?.stake) {
-                    response = "Which games fo you want to include in the plays\nOptions \n1. A1\n2. A2\n3. P2\n4. B\n\neg 1,2,3,4";
+                    response = "Which games do you want to include in the plays\nOptions \n1. A1\n2. A2\n3. P2\n4. B\n\neg 1,2,3,4";
                     session.auto.stake = text.split(",");
                 } else if (!session?.auto?.games) {
                     response = "Do you want to confirm each iteration? \n1. Yes\n0. No\n";
@@ -373,6 +458,7 @@ const logic = async (data) => {
 
                         //Total games to play 
                         let earlyExit = true;
+
                         while (session.auto.done < +session.auto.count && earlyExit) {
                             let data_ = ussd;
                             if (session.auto?.number?.network === 'VODAFONE') {
@@ -419,6 +505,7 @@ const logic = async (data) => {
                                         session.auto.confirmData = data_;
                                         loop += 1000;
                                         earlyExit = false;
+                                        data.reply("----");
                                     } else {
                                         session.auto.done++;
                                         data_[keyValue] = 1;
@@ -464,7 +551,7 @@ const logic = async (data) => {
                     } else {
                         if (io) {
                             let cmd = text.replace('pincode', session.command.device?.pin);
-                            io.emit(session.command.device?.device_id, session.command.device?.device_id + "=" + cmd);
+                            // io.emit(session.command.device?.device_id, session.command.device?.device_id + "=" + cmd);
                             if (socket_session)
                                 socket_session.emit(session.command.device?.id, session.command.device?.device_id + "=" + cmd);
 

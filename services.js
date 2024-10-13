@@ -1,16 +1,16 @@
 const devicesModel = require("./models/devices");
 const msisdnModel = require("./models/msisdn");
 
-module.exports.validate = async (req, res, next) => {
-    console.log(req.body);
+module.exports.validate = async (req) => {
+    console.log(req)
     if (!req.body?.device_id)
-        return res.status(401).send("Device ID is required");
+        return "Device ID is required";
 
     const checkDevice = await devicesModel.findOne({ where: { device_id: req.body?.device_id } });
     if (!checkDevice?.dataValues?.id)
-        return res.status(401).send("Unauthorized device communication..");
+        return "Unauthorized device communication..";
     else
-        return next();
+        return true;
 }
 
 /**
@@ -20,17 +20,14 @@ module.exports.validate = async (req, res, next) => {
  * @param {*} next 
  * @returns 
  */
-module.exports.setBalance = async (req, res, next) => {
-    if (!req.body?.mobile)
-        return res.status(401).send("Mobile number is required");
-
-    const msisdn = req.body?.mobile.startsWith("233") ? req.body?.mobile : `233${req.body?.mobile.substring(1)}`
+module.exports.setBalance = async (req) => {
     await msisdnModel.update({ balance: req.body?.balance || 0 }, {
         where: {
-            mobile: msisdn
+            device_id: req?.body?.device_id,
+            slot: req?.body?.slot
         }
     });
-    return res.status(200).send("Ok");
+    return true;
 }
 
 /**
@@ -40,15 +37,15 @@ module.exports.setBalance = async (req, res, next) => {
  * @param {*} next 
  * @returns 
  */
-module.exports.setDevice = async (req, res, next) => {
+module.exports.setDevice = async (req) => {
     if (!req.body?.mobile)
-        return res.status(401).send("Mobile number is required");
+        return "Mobile number is required";
 
     const msisdn = req.body?.mobile.startsWith("233") ? req.body?.mobile : `233${req.body?.mobile.substring(1)}`
-    await msisdnModel.update({ device_id: req.body?.device_id }, {
+    await msisdnModel.update({ device_id: req.body?.device_id, slot: req.body?.slot || 0 }, {
         where: {
             mobile: msisdn
         }
     });
-    return res.status(200).send("Ok");
+    return "Ok";
 }
