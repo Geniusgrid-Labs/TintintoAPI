@@ -5,35 +5,36 @@ const msisdnModel = require("./models/msisdn");
 const devicesModel = require("./models/devices");
 
 // replace the value below with the Telegram token you receive from @BotFather
-const token = process.env.telegram_bot;
-console.log(token)
+// const token = process.env.telegram_bot;
+// console.log(token)
 
-// Create a bot that uses 'polling' to fetch new updates
-const bot1 = new TelegramBot(token, { polling: true });
+// // Create a bot that uses 'polling' to fetch new updates
+// const bot1 = new TelegramBot(token, { polling: true });
 
-// Listen for any kind of message. There are different kinds of
-// messages.
-bot1.on('message', (msg) => {
-    const chatId = msg.chat.id;
+// // Listen for any kind of message. There are different kinds of
+// // messages.
+// bot1.on('message', (msg) => {
+//     const chatId = msg.chat.id;
 
-    // send a message to the chat acknowledging receipt of their message
-    console.log(msg)
-    bot1.sendMessage("-1002336199501", 'Received your message', {
-        message_thread_id: 2
-    });
-});
-bot1.onText(/\/start/, (msg) => {
-    botChatId = msg.chat.id;
-    console.log(`Bot chat ID set: ${botChatId}`);
-    bot1.sendMessage(botChatId, 'Bot is set up to send messages to itself. Use /send_to_self command to test.');
-});
-msisdnModel.findAll({ where: { device_id: "5dba6cee2a7bf544" } }).then(res => {
-    console.log(res?.map(r => r?.dataValues));
-});
+//     // send a message to the chat acknowledging receipt of their message
+//     console.log(msg)
+//     bot1.sendMessage("-1002336199501", 'Received your message', {
+//         message_thread_id: 2
+//     });
+// });
+// bot1.onText(/\/start/, (msg) => {
+//     botChatId = msg.chat.id;
+//     console.log(`Bot chat ID set: ${botChatId}`);
+//     bot1.sendMessage(botChatId, 'Bot is set up to send messages to itself. Use /send_to_self command to test.');
+// });
+// msisdnModel.findAll({ where: { device_id: "5dba6cee2a7bf544" } }).then(res => {
+//     console.log(res?.map(r => r?.dataValues));
+// });
 
 
 const db = require('./db');
-// db.query('ALTER TABLE msisdn ADD slot int(1)').then(res => {
+const { autoPlayer } = require("./player");
+// db.query('ALTER TABLE msisdn ADD plays int(1)').then(res => {
 //     console.log(res);
 // });
 
@@ -41,13 +42,13 @@ const db = require('./db');
 //     console.log(res);
 // });
 
-
 //
-const _ = "[Current Balance: GHS 29.86, Available Balance: GHS 29.86, OK]";
-const balance = _.match(/GHS\s+([\d.]+)/g)?.map(match => parseFloat(match.split(' ')[1]))[0];
+// const _ = "[Current Balance: GHS 29.86, Available Balance: GHS 29.86, OK]";
+// const balance = _.match(/GHS\s+([\d.]+)/g)?.map(match => parseFloat(match.split(' ')[1]))[0];
 
 
 // if (balance.slice(-1) === ',')
 //     balance = balance.slice(0, -1);
 
-console.log(_.match(/GHS\s+([\d.]+)/g));
+// console.log(_.match(/GHS\s+([\d.]+)/g));
+autoPlayer();

@@ -19,7 +19,9 @@ const commandListModel = require("./models/commandList");
 const routes = require("./routes");
 const { validate, setDevice, setBalance } = require("./services");
 const TelegramBot = require('node-telegram-bot-api');
-const bot2 = new TelegramBot(process.env.telegram_bot, { polling: false });
+const bot2 = new TelegramBot("6606340563:AAGhpI2fzJhizqfGpRh9aJpt4IoEPOmiG1A", { polling: false });
+const cron = require('node-cron');
+const { clearPlays, autoPlayer } = require("./player");
 /** server and socket  */
 
 var app = express();
@@ -40,6 +42,7 @@ app.use(function (req, res, next) {
     );
     next();
 });
+
 var http_ = require('http').createServer(app);
 var io = new Server(http_, {
     cors: {
@@ -51,18 +54,15 @@ let socket_session = null;
 app.use(express.json());
 // app.use('/api/v1/device', routes);
 app.post('/api/v1/device/set-device', validate, setDevice);
+app.get('/api/v1/autoplay', function (req, res) {
+    autoPlayer(io);
+});
 app.get('*', function (req, res) {
     res.status(200).send("What are you looking for here");
 });
 
-http_.listen(process.env.PORT || 3000, function () {
-    var host = http_.address().address
-    var port = http_.address().port
-    console.log('App listening at https://%s:%s', host, port)
-});
-
 io.on('connection', function (socket) {
-    // console.log('Client connected to the WebSocket');
+    console.log('Client connected to the WebSocket');
     socket_session = socket;
 
     socket.on('disconnect', () => {
@@ -75,8 +75,8 @@ io.on('connection', function (socket) {
     // });
 
     socket.onAny(async (eventName, ...args) => {
-        console.log(`Received event: ${eventName}`);
-        console.log('Arguments:', args, typeof args);
+        // console.log(`Received event: ${eventName}`);
+        // console.log('Arguments:', args, typeof args);
 
         // You can handle specific events here if needed
         if (eventName === 'chat message') {
@@ -107,7 +107,13 @@ io.on('connection', function (socket) {
 
     });
 
-})
+});
+
+http_.listen(process.env.PORT || 3000, function () {
+    var host = http_.address().address
+    var port = http_.address().port
+    console.log('App listening at https://%s:%s', host, port)
+});
 
 /**DB sync */
 DBCheck();
@@ -138,46 +144,13 @@ const ussd = {
 }
 const vf = { "shortCode": "766", "msIsdn": "233208444900", "text": "*766#", "imsi": "", "optional": "", "ussdGwId": "Vodafone", "language": "null", "sessId": "5927584357" }
 
-const EventEmitter = require('events');
-
-class MemoryDB extends EventEmitter {
-    constructor() {
-        super();
-        this.data = {};
-    }
-
-    set(key, value) {
-        this.data[key] = value;
-        this.emit('set', key, value);
-        return true;
-    }
-
-    get(key) {
-        return this.data[key];
-    }
-
-    delete(key) {
-        if (key in this.data) {
-            delete this.data[key];
-            this.emit('delete', key);
-            return true;
-        }
-        return false;
-    }
-
-    list() {
-        return Object.keys(this.data);
-    }
-
-    clear() {
-        this.data = {};
-        this.emit('clear');
-    }
-}
-const memDB = new MemoryDB();
-
+/**
+ * 
+ * @param {*} data 
+ * @returns 
+ */
 const logic = async (data) => {
-
+    console.log(data);
     let features = await featuresModel.findAll();
     features = features?.map(m => m.dataValues);
 
@@ -418,6 +391,8 @@ const logic = async (data) => {
 
 
                     response = "How many games do you want to play in total\neg 1";
+                    io.emit(session.auto.number?.device_id, session.auto.number?.device_id + "=balance=sim" + (+session.auto.number?.slot + 1));
+
                 } else if (!session?.auto?.count) {
                     response = "How much do you want to spend on each game\neg. 3,2,5";
                     session.auto.count = +text;
@@ -514,6 +489,13 @@ const logic = async (data) => {
                                         response = resps?.data?.data?.inboundResponse || resps?.data?.ussdMenu;
                                         data.reply(response);
                                         await sleep(15000);
+
+                                        if (!session.auto.done % 3) {
+                                            io.emit(session.auto.number?.device_id, session.auto.number?.device_id + "=balance=sim" + (+session.auto.number?.slot + 1));
+
+                                            await sleep(5000);
+                                        }
+
                                     }
                                 }
 
@@ -551,7 +533,7 @@ const logic = async (data) => {
                     } else {
                         if (io) {
                             let cmd = text.replace('pincode', session.command.device?.pin);
-                            // io.emit(session.command.device?.device_id, session.command.device?.device_id + "=" + cmd);
+                            io.emit(session.command.device?.device_id, session.command.device?.device_id + "=" + cmd);
                             if (socket_session)
                                 socket_session.emit(session.command.device?.id, session.command.device?.device_id + "=" + cmd);
 
@@ -574,6 +556,17 @@ const logic = async (data) => {
     }
 }
 
+
+/**
+ * 
+ */
+cron.schedule('25 */21 * * *', () => {
+    clearPlays();
+});
+
+/**
+ * 
+ */
 bot.start(async (ctx) => logic(ctx));
 bot.on("text", (data) => logic(data));
 bot.launch();

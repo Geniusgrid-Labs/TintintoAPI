@@ -33,6 +33,10 @@ const msisdnModel = db.define('msisdn', {
     slot: {
         type: DataTypes.INTEGER(1),
         allowNull: true
+    },
+    plays: {
+        type: DataTypes.INTEGER(11),
+        allowNull: true
     }
 });
 
