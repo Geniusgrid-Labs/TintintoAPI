@@ -1,5 +1,5 @@
 const { DataTypes } = require("sequelize");
-const db = require("../db");
+const db = require("../utils/db");
 const devicesModel = db.define('devices', {
     id: {
         type: DataTypes.INTEGER,
@@ -15,6 +15,30 @@ const devicesModel = db.define('devices', {
         allowNull: true
     },
     pin: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    name: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    active_slot: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    sim1: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    sim2: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    sim1_network: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    sim2_network: {
         type: DataTypes.STRING,
         allowNull: true
     }

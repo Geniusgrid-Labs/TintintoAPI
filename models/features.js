@@ -1,5 +1,5 @@
 const { DataTypes } = require("sequelize");
-const db = require("../db");
+const db = require("../utils/db");
 const featuresModel = db.define('features', {
     id: {
         type: DataTypes.INTEGER,

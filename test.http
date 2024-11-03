@@ -1,8 +1,0 @@
-POST http://192.168.178.106:28090/api/v1/device/set-device
-Content-Type: application/json
-
-{
-    "device_id":"a71d503ba2422621",
-    "balance":1,
-    "mobile":"233531644806"
-}

@@ -1,5 +1,5 @@
 const { DataTypes } = require("sequelize");
-const db = require("../db");
+const db = require("../utils/db");
 const commandListModel = db.define('commandList', {
     id: {
         type: DataTypes.INTEGER,
@@ -11,6 +11,10 @@ const commandListModel = db.define('commandList', {
         allowNull: false
     },
     command: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    network: {
         type: DataTypes.STRING,
         allowNull: true
     }
