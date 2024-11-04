@@ -2,7 +2,7 @@ const tasksModel = require("./models/tasks");
 const devicesModel = require("./models/devices");
 const { numberCheck, balanceCheck } = require("./utils/helper");
 const msisdnModel = require("./models/msisdn");
-const commandListModel = require("./old/models/commandList");
+const commandListModel = require("./models/commandList");
 const gamesModel = require("./models/games");
 
 const pollingService = async (req, res, next) => {
@@ -238,7 +238,12 @@ const managePlay = async (req, res) => {
     }
 }
 
+const loginUser = (req, res) => {
+
+}
+
 module.exports = {
+    loginUser,
     pollingService,
     deletePollingService,
     deviceLog,

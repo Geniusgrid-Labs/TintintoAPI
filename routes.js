@@ -1,5 +1,5 @@
 const express = require('express');
-const { pollingService, deletePollingService, deviceLog, getDevices, createTasks, deleteTasks, getTasks, genGames, getMsisdn, getCommands, deleteMsisdn, createGame, deleteGame, getGames, getSummary, managePlay } = require('./services');
+const { pollingService, deletePollingService, deviceLog, getDevices, createTasks, deleteTasks, getTasks, genGames, getMsisdn, getCommands, deleteMsisdn, createGame, deleteGame, getGames, getSummary, managePlay, loginUser } = require('./services');
 const routes = express.Router();
 
 routes.get('/poll/:id', pollingService);
@@ -23,4 +23,6 @@ routes.get('/game', getGames);
 routes.put('/game/:id/:status', managePlay);
 
 routes.get('/summary', getSummary);
+
+routes.post('/login', loginUser)
 module.exports = routes;
