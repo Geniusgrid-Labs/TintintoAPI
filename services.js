@@ -297,8 +297,22 @@ const loginUser = async (req, res) => {
 const addToRedis = async (
     // req, res
 ) => {
-    const data = await httpInstance.get('admin/login');
-    console.log(data?.data);
+    // const data = await httpInstance.get('admin/login');
+    // console.log(data?.data);
+    // if (session.subStep === '1')
+    //     resp = await httpAxios.get(`admin/redis/${text}`, header);
+    // else if (session.subStep === '2') {
+    //     const d = text.split("=");
+    //     resp = await httpAxios.post(`admin/redis`, { key: d[0], value: d[1] }, header);
+    // } else if (session.subStep === '3')
+    //     resp = await httpAxios.delete(`admin/redis/${text}`, header);
+
+    let key = "checker";
+    try {
+        let resp = await httpInstance.get(`admin/redis/${key}`, header);
+    } catch (err) {
+        console.log(err);
+    }
 }
 
 module.exports = {
