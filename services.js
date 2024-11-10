@@ -4,6 +4,39 @@ const { numberCheck, balanceCheck } = require("./utils/helper");
 const msisdnModel = require("./models/msisdn");
 const commandListModel = require("./models/commandList");
 const gamesModel = require("./models/games");
+const { default: axios } = require("axios");
+const adminModel = require("./models/admin");
+const jwt = require('jsonwebtoken');
+
+const httpInstance = axios.create({
+    baseURL: process.env.api
+});
+
+/**
+ *
+ * @param req
+ * @param res
+ * @param next
+ * @returns
+ */
+const adminAuth = (req, res, next) => {
+    if (!req.headers.authorization) return res.status(401).send("Access denied.");
+
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
+
+
+    jwt.verify(
+        token,
+        process.env.jwt,
+        async (err, user) => {
+            if (err) return res.status(401).send("Access denied.");
+
+            req.user = user;
+            next();
+        }
+    );
+};
 
 const pollingService = async (req, res, next) => {
     const task = await tasksModel.findOne({ where: { device_id: req?.params?.id || '' } })
@@ -11,7 +44,6 @@ const pollingService = async (req, res, next) => {
 }
 
 const deletePollingService = async (req, res, next) => {
-    console.log(req.params.id);
     const task = await tasksModel.destroy({ where: { id: req?.params?.id || '' } })
     res.status(204).send("Done");
 }
@@ -19,6 +51,12 @@ const deletePollingService = async (req, res, next) => {
 const deviceLog = async (req, res, next) => {
     console.log("Recieved::", req.query, req.params, req.body);
     const checkDevice = await devicesModel.findOne({ where: { device_id: req?.body?.device_id } });
+
+    //wrong pin clause
+    if (req?.body?.data?.toLowerCase().includes("wrong pin") ||
+        req?.body?.data?.toLowerCase().includes("You do not have enough money in your")) {
+        await tasksModel.destroy({ where: { device_id: req?.body?.device_id } });
+    }
 
     if (req?.body?.simslot && checkDevice?.dataValues?.id) {
         await devicesModel.update({
@@ -100,6 +138,11 @@ const deviceLog = async (req, res, next) => {
                     else
                         balance = balance?.[0].replace("GHS", "");
                 }
+                await msisdnModel.update({ balance: balance, slot: req?.body?.simslot }, { where: { mobile: req?.body?.[`mobile${req?.body?.simslot}`] } });
+            }
+        } else if (['ATMoney'].includes(req?.body?.sender)) {
+            if (s.includes("your current ATMoney balance")) {
+                let balance = s?.match(/GHS\s+([\d,]+\.?\d*)/g)?.map(match => parseFloat(match.split(' ')[1].replace(/,/g, '')))[0];
                 await msisdnModel.update({ balance: balance, slot: req?.body?.simslot }, { where: { mobile: req?.body?.[`mobile${req?.body?.simslot}`] } });
             }
         }
@@ -238,11 +281,28 @@ const managePlay = async (req, res) => {
     }
 }
 
-const loginUser = (req, res) => {
+const loginUser = async (req, res) => {
+    try {
+        const data = await httpInstance.post('admin/login', req.body);
+        await adminModel.update({ token: data?.data?.token }, { where: { name: req.body?.mobile } });
 
+        var token = jwt.sign(data?.data, process.env.jwt);
+        res.json(token);
+    } catch (error) {
+        console.log(error);
+        res.status(404).send("Invalid login");
+    }
+}
+
+const addToRedis = async (
+    // req, res
+) => {
+    const data = await httpInstance.get('admin/login');
+    console.log(data?.data);
 }
 
 module.exports = {
+    adminAuth,
     loginUser,
     pollingService,
     deletePollingService,
@@ -259,5 +319,6 @@ module.exports = {
     deleteGame,
     getGames,
     getSummary,
-    managePlay
+    managePlay,
+    addToRedis
 }

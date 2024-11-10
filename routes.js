@@ -1,28 +1,28 @@
 const express = require('express');
-const { pollingService, deletePollingService, deviceLog, getDevices, createTasks, deleteTasks, getTasks, genGames, getMsisdn, getCommands, deleteMsisdn, createGame, deleteGame, getGames, getSummary, managePlay, loginUser } = require('./services');
+const { pollingService, deletePollingService, deviceLog, getDevices, createTasks, deleteTasks, getTasks, genGames, getMsisdn, getCommands, deleteMsisdn, createGame, deleteGame, getGames, getSummary, managePlay, loginUser, adminAuth } = require('./services');
 const routes = express.Router();
 
 routes.get('/poll/:id', pollingService);
 routes.delete('/poll/:id', deletePollingService);
 routes.post('/device', deviceLog);
-routes.get('/devices', getDevices);
+routes.get('/devices', adminAuth, getDevices);
 
-routes.post('/tasks', createTasks);
-routes.get('/tasks', getTasks);
-routes.delete('/tasks/:id', deleteTasks);
+routes.post('/tasks', adminAuth, createTasks);
+routes.get('/tasks', adminAuth, getTasks);
+routes.delete('/tasks/:id', adminAuth, deleteTasks);
 
-routes.post('/games', genGames);
+routes.post('/games', adminAuth, genGames);
 
-routes.get('/msisdn', getMsisdn);
-routes.delete('/msisdn/:id', deleteMsisdn);
-routes.get('/commands', getCommands);
+routes.get('/msisdn', adminAuth, getMsisdn);
+routes.delete('/msisdn/:id', adminAuth, deleteMsisdn);
+routes.get('/commands', adminAuth, getCommands);
 
-routes.post('/game', createGame);
-routes.delete('/game/:id', deleteGame);
-routes.get('/game', getGames);
-routes.put('/game/:id/:status', managePlay);
+routes.post('/game', adminAuth, createGame);
+routes.delete('/game/:id', adminAuth, deleteGame);
+routes.get('/game', adminAuth, getGames);
+routes.put('/game/:id/:status', adminAuth, managePlay);
 
-routes.get('/summary', getSummary);
+routes.get('/summary', adminAuth, getSummary);
 
 routes.post('/login', loginUser)
 module.exports = routes;

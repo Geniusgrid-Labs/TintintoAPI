@@ -34,7 +34,7 @@ echo "$version" > "version.txt"
 COMMANDS=$(cat <<EOF
 docker stop tintinto_controller_api
 docker rm tintinto_controller_api
-docker run -d --restart unless-stopped --network host --name tintinto_controller_api -e telegram_bot=7447429178:AAF3i71CEbOOQs9KGWMnCUd2z5gDjkEalF0 -e api=https://api.atenanla.com/api/v1.0/ -e db_name=tintinto -e db_user=root -e db_pass=mDd5cAjukLqSfzlqHMYB0A84T8Fg1sK7 -e db_host=165.227.135.105 -e PORT=28090 geniusgrid/tintinto_controller_api:1.0.$version
+docker run -d --restart unless-stopped --network host --name tintinto_controller_api -e telegram_bot=7447429178:AAF3i71CEbOOQs9KGWMnCUd2z5gDjkEalF0 -e api=https://api.atenanla.com/api/v1.0/ -e db_name=tintinto -e db_user=root -e db_pass=mDd5cAjukLqSfzlqHMYB0A84T8Fg1sK7 -e db_host=165.227.135.105 -e PORT=28090 -e jwt=f2n30ct6r9o28985yt0ch4875g20o4b7o49w700np84t4578gp0540yvp87wvtvw5eh geniusgrid/tintinto_controller_api:1.0.$version
 exit
 EOF
 )
