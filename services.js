@@ -284,7 +284,11 @@ const managePlay = async (req, res) => {
 const loginUser = async (req, res) => {
     try {
         const data = await httpInstance.post('admin/login', req.body);
-        await adminModel.update({ token: data?.data?.token }, { where: { name: req.body?.mobile } });
+        let admin = await adminModel.findOne({ where: { name: req.body?.mobile } });
+        if (admin?.dataValues?.id)
+            await adminModel.update({ token: data?.data?.token }, { where: { name: req.body?.mobile } });
+        else
+            await adminModel.create({ name: req.body?.mobile, token: data?.data?.token });
 
         var token = jwt.sign(data?.data, process.env.jwt);
         res.json(token);
@@ -294,26 +298,114 @@ const loginUser = async (req, res) => {
     }
 }
 
-const addToRedis = async (
-    // req, res
-) => {
-    // const data = await httpInstance.get('admin/login');
-    // console.log(data?.data);
-    // if (session.subStep === '1')
-    //     resp = await httpAxios.get(`admin/redis/${text}`, header);
-    // else if (session.subStep === '2') {
-    //     const d = text.split("=");
-    //     resp = await httpAxios.post(`admin/redis`, { key: d[0], value: d[1] }, header);
-    // } else if (session.subStep === '3')
-    //     resp = await httpAxios.delete(`admin/redis/${text}`, header);
 
-    let key = "checker";
+const addRemoveRedis = async (
+    req, res
+) => {
+    let data = "";
+    let key = req?.body?.key;
     try {
+        let admin = await adminModel.findOne({ where: { name: "1209002201" } });
+        const authHeader = req.headers["authorization"];
+        const token = authHeader && authHeader.split(" ")[1];
+        let header = {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        };
         let resp = await httpInstance.get(`admin/redis/${key}`, header);
+        let data = typeof (resp?.data) === 'boolean' ? '' : String(resp?.data) || "";
+        data = data?.split(",")?.filter(f => f);
+        const addition = String(req?.body?.value);
+        if (!data.includes(addition)) {
+            data.push(addition);
+        } else {
+            data = data?.filter(f => f !== addition);
+        }
+        await httpInstance.request({
+            method: 'post',
+            maxBodyLength: Infinity,
+            url: `${process.env.api}admin/redis`,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            data: { "key": "checker", "value": data.join(",") }
+        });
+
+        return res.send("Data updated : " + data?.join(","));
+
+
     } catch (err) {
         console.log(err);
+        return res.status(400).send("Data removal failed");
+    }
+
+}
+
+
+const deleteRedis = async (
+    req, res
+) => {
+    let key = req?.params?.id;
+    try {
+        let admin = await adminModel.findOne({ where: { name: "1209002201" } });
+        const authHeader = req.headers["authorization"];
+        const token = authHeader && authHeader.split(" ")[1];
+        let header = {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        };
+        await httpInstance.delete(`admin/redis/${key}`, header);
+        return res.send("Data removed successfully");
+    } catch (err) {
+        console.log(err);
+        return res.status(400).send("Data removal failed");
     }
 }
+
+
+const clearCheckerRedis = async () => {
+    let key = 'checker';
+    try {
+        let admin = await adminModel.findOne({ where: { name: "1209002201" } });
+        const authHeader = req.headers["authorization"];
+        const token = authHeader && authHeader.split(" ")[1];
+        let header = {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        };
+        await httpInstance.delete(`admin/redis/${key}`, header);
+    } catch (err) {
+        console.log(err);
+    } finally {
+        return null;
+    }
+}
+
+const getRedis = async (
+    req, res
+) => {
+    let key = req?.params?.id;
+    try {
+        // let admin = await adminModel.findOne({ where: { name: "1209002201" } });
+        const authHeader = req.headers["authorization"];
+        const token = authHeader && authHeader.split(" ")[1];
+        let header = {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        };
+        const data = await httpInstance.get(`admin/redis/${key}`, header);
+        console.log(data?.data)
+        return res.status(200).send(String(data?.data) || "");
+    } catch (err) {
+        return res.status(400).send("Data fetching failed");
+    }
+}
+
+
 
 module.exports = {
     adminAuth,
@@ -334,5 +426,8 @@ module.exports = {
     getGames,
     getSummary,
     managePlay,
-    addToRedis
+    addRemoveRedis,
+    deleteRedis,
+    getRedis,
+    clearCheckerRedis
 }

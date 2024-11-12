@@ -32,3 +32,13 @@ Content-Type : application/json
   "slot0":"tigo gh",
   "slot1": "mtn gh"
 }
+
+
+GET https://api.atenanla.com/api/v1.0/admin/redis/checker
+Content-Type : application/json
+Authorization : Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6IkFkbWluIiwiZW1haWwiOiIiLCJtb2JpbGUiOiIwMjAyMDAwMDAwIiwicGFzc3dvcmQiOiJnYkdXRWFaR2JIaElrZnlmOEo3MS9XeEpTYXBRemh4bDMwamxuTE9iTW1JPSIsInN0YXR1cyI6MSwiYWNjb3VudF90eXBlIjoxLCJ0b2tlbiI6IiIsImlhdCI6MTczMTM0MDc3MCwiZXhwIjoxNzMxMzQ0MzcwfQ.nGHQCnok5ZieEOEwjosNqixDgYf1HG5had-AkZtuxaI
+
+{
+  "key":"checker",
+  "value":"233502922681,233593933486,233500772450,233592058858"
+}

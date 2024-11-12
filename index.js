@@ -1,11 +1,13 @@
 require("dotenv").config();
+const cron = require('node-cron');
 const compression = require("compression");
 const express = require('express');
 const cors = require('cors');
 const morgan = require("morgan");
 const bodyParser = require('body-parser')
 const routes = require("./routes");
-const { addToRedis } = require("./services");
+const { default: axios } = require("axios");
+const { clearCheckerRedis } = require("./services");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -39,8 +41,14 @@ app.get("*", (req, res, next) => {
     res.status(200).send("Unauthorized request")
 })
 
+cron.schedule('*/15 20 * * *', () => {
+    console.log('---running a task every minute');
+    clearCheckerRedis();
+});
+
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
 
-addToRedis();
+
+
