@@ -7,6 +7,7 @@ const gamesModel = require("./models/games");
 const { default: axios } = require("axios");
 const adminModel = require("./models/admin");
 const jwt = require('jsonwebtoken');
+const moment = require("moment");
 
 const httpInstance = axios.create({
     baseURL: process.env.api
@@ -206,6 +207,102 @@ const genGames = async (req, res) => {
         "9": 36,
         "10": 45,
     };
+    // const authHeader = req.headers["authorization"];
+    // const token = authHeader && authHeader.split(" ")[1];
+    // var decoded = await jwt.verify(token, process.env.jwt);
+    // let header = {
+    //     headers: {
+    //         Authorization: `Bearer ${decoded?.token}`
+    //     }
+    // };
+
+    // try {
+    //     const getToken = await httpInstance.post(`admin/login`, { mobile: process.env.user, password: process.env.pass }, header);
+    //     header.headers.Authorization = `Bearer ${getToken?.data?.token}`
+    // } catch (err) {
+    //     return;
+    // }
+
+    // const dates = {
+    //     // "2024-10-30": "65,43,31,20,39",
+    //     // "2024-10-31": "61,47,6,70,45",
+    //     // "2024-11-01": "56,42,71,58,22",
+    //     // "2024-11-02": "39,14,73,7,29",
+    //     // "2024-11-03": "67,28,50,42,16",
+    //     // "2024-11-04": "28,36,56,6,71",
+    //     // "2024-11-05": "44,51,27,68,6",
+    //     // "2024-11-06": "35,70,28,59,4",
+    //     // "2024-11-07": "51,46,66,9,21",
+    //     "2024-11-08": "41,63,70,56,3",
+    //     "2024-11-09": "28,39,13,59,74",
+    //     "2024-11-10": "9,64,30,38,52",
+    //     "2024-11-11": "23,6,70,37,58",
+    //     "2024-11-12": "49,36,64,6,21",
+    //     "2024-11-13": "30,53,38,62,9",
+    //     "2024-11-14": "72,53,9,31,16",
+    //     "2024-11-15": "53,65,44,18,6",
+    // }
+
+    // Object.keys(dates)?.map(async m => {
+    //     const date = m;
+
+    //     const data_ = await httpInstance.post(`admin/sql`, {
+    //         sql: `SELECT play_numbers FROM tickets where DATE(play_timestamp)='${date}' AND play_timestamp<'${date} 19:30' limit 0,10000000;`,
+    //         password: process.env.pass_code
+    //     }, header);
+
+    //     let prevDraw = await httpInstance.post(`admin/sql`, {
+    //         sql: `SELECT * from draws order by id DESC limit 1,1`,
+    //         password: process.env.pass_code
+    //     }, header);
+
+    //     prevDraw =
+    //         prevDraw?.data?.[0]?.draw_results?.split(",")?.map((m) => +m) || [];
+
+    //     const numbers = data_?.data?.map(n => n.play_numbers)?.map(n => n?.split(","))?.flat();
+    //     const count = {};
+    //     numbers?.map(n => {
+    //         if (!count?.[n]) count[n] = 0;
+    //         count[n]++;
+    //     })
+    //     const countArr = Object.entries(count)?.map(m => ({ number: m[0], count: m[1] }))
+    //         .sort((a, b) => a.count - b.count)
+    //         ?.map(n => +n.number);
+
+    //     const d = [countArr.slice(0, 2),
+    //     countArr.slice(8, 10),
+    //     countArr.slice(12, 14),
+    //     countArr.slice(16, 18),
+    //     countArr.slice(18, 20),
+    //     countArr.slice(21, 23),
+    //     countArr.slice(24, 26)
+    //     ].flat().map(n => +n)?.filter(f => +f);
+
+    //     const draw_ = dates[date];
+    //     // console.log(countArr.slice(0, 2), countArr.slice(0, 2).filter(num => draw_.includes(num)).length);
+    //     // console.log(countArr.slice(8, 10), countArr.slice(8, 10).filter(num => draw_.includes(num)).length);
+    //     // console.log(countArr.slice(12, 15), countArr.slice(12, 15).filter(num => draw_.includes(num)).length);
+    //     // console.log(countArr.slice(16, 20), countArr.slice(16, 20).filter(num => draw_.includes(num)).length);
+    //     // console.log(countArr.slice(18, 20), countArr.slice(18, 20).filter(num => draw_.includes(num)).length);
+
+    //     const combinations = [];
+    //     const wins = [];
+
+    //     for (let i = 0; i < d.length; i++) {
+    //         for (let j = i + 1; j < d.length; j++) {
+    //             combinations.push([d[i], d[j]]);
+    //             if ([d[i], d[j]].filter(num => draw_.includes(num)).length === 2)
+    //                 wins.push([d[i], d[j]]);
+    //         }
+    //     }
+
+    //     console.log(d.filter(num => draw_.includes(num)).length, " ===  ", combinations.length, (wins.length * 240 * 1));
+    // })
+
+
+
+    // *******************************************
+
     const plays = Array(+req?.body?.count || 10).fill(0).map(m => {
         const plays = [];
         let limits = { '1': 1, '3': 2, '8': 10, '5': 1 };
@@ -237,6 +334,76 @@ const genGames = async (req, res) => {
     });
 
     res.json(plays);
+}
+
+const autoGenGames = async (time = "19:30") => {
+    let header = {
+        headers: {
+            Authorization: `Bearer`
+        }
+    };
+
+    try {
+        const getToken = await httpInstance.post(`admin/login`, { mobile: process.env.user, password: process.env.pass }, header);
+        header.headers.Authorization = `Bearer ${getToken?.data?.token}`;
+
+        const date = moment().subtract(1, 'days').format("YYYY-MM-DD");
+        const data_ = await httpInstance.post(`admin/sql`, {
+            sql: `SELECT play_numbers FROM tickets where DATE(play_timestamp)='${date}' AND play_timestamp<'${date} ${time}' limit 0,10000000;`,
+            password: process.env.pass_code
+        }, header);
+
+        let prevDraw = await httpInstance.post(`admin/sql`, {
+            sql: `SELECT * from draws order by id DESC limit 1,1`,
+            password: process.env.pass_code
+        }, header);
+
+        prevDraw =
+            prevDraw?.data?.[0]?.draw_results?.split(",")?.map((m) => +m) || [];
+
+        const numbers = data_?.data?.map(n => n.play_numbers)?.map(n => n?.split(","))?.flat();
+        const count = {};
+        numbers?.map(n => {
+            if (!count?.[n]) count[n] = 0;
+            count[n]++;
+        })
+        const countArr = Object.entries(count)?.map(m => ({ number: m[0], count: m[1] }))
+            .sort((a, b) => a.count - b.count)
+            ?.map(n => +n.number);
+
+        const d = [countArr.slice(0, 2),
+        countArr.slice(8, 10),
+        countArr.slice(12, 14),
+        countArr.slice(16, 18),
+        countArr.slice(18, 20),
+        countArr.slice(21, 23),
+        countArr.slice(24, 26)
+        ].flat().map(n => +n)?.filter(f => +f);
+
+        const combinations = [];
+
+        for (let i = 0; i < d.length; i++) {
+            for (let j = i + 1; j < d.length; j++) {
+                combinations.push([d[i], d[j]]);
+            }
+        }
+
+        const devices = await devicesModel.findAll();
+        const plays = devices?.map(d => {
+            const _ = d?.dataValues;
+            const plays = combinations?.map(n => {
+                return [
+                    { device_id: _?.device_id, task: `command=*766#:1:2:${n?.join(",")}:1:1`, command_type: "766play" },
+                    { device_id: _?.device_id, task: `wait=30000`, command_type: 'device' }
+                ]
+            })
+            return plays;
+        });
+        console.log(plays.flat());
+    } catch (err) {
+        console.log(err)
+        return;
+    }
 }
 
 const createGame = async (req, res) => {
@@ -290,6 +457,7 @@ const loginUser = async (req, res) => {
         else
             await adminModel.create({ name: req.body?.mobile, token: data?.data?.token });
 
+        console.log(data?.data?.token);
         var token = jwt.sign(data?.data, process.env.jwt);
         res.json(token);
     } catch (error) {
@@ -305,12 +473,14 @@ const addRemoveRedis = async (
     let data = "";
     let key = req?.body?.key;
     try {
-        let admin = await adminModel.findOne({ where: { name: "1209002201" } });
         const authHeader = req.headers["authorization"];
         const token = authHeader && authHeader.split(" ")[1];
+        var decoded = await jwt.verify(token, process.env.jwt);
+
+
         let header = {
             headers: {
-                Authorization: `Bearer ${token}`
+                Authorization: `Bearer ${decoded?.token}`
             }
         };
         let resp = await httpInstance.get(`admin/redis/${key}`, header);
@@ -327,7 +497,8 @@ const addRemoveRedis = async (
             maxBodyLength: Infinity,
             url: `${process.env.api}admin/redis`,
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${decoded?.token}`
             },
             data: { "key": "checker", "value": data.join(",") }
         });
@@ -348,12 +519,13 @@ const deleteRedis = async (
 ) => {
     let key = req?.params?.id;
     try {
-        let admin = await adminModel.findOne({ where: { name: "1209002201" } });
         const authHeader = req.headers["authorization"];
         const token = authHeader && authHeader.split(" ")[1];
+        var decoded = await jwt.verify(token, process.env.jwt);
+
         let header = {
             headers: {
-                Authorization: `Bearer ${token}`
+                Authorization: `Bearer ${decoded?.token}`
             }
         };
         await httpInstance.delete(`admin/redis/${key}`, header);
@@ -368,12 +540,12 @@ const deleteRedis = async (
 const clearCheckerRedis = async () => {
     let key = 'checker';
     try {
-        let admin = await adminModel.findOne({ where: { name: "1209002201" } });
         const authHeader = req.headers["authorization"];
         const token = authHeader && authHeader.split(" ")[1];
+        var decoded = await jwt.verify(token, process.env.jwt);
         let header = {
             headers: {
-                Authorization: `Bearer ${token}`
+                Authorization: `Bearer ${decoded?.token}`
             }
         };
         await httpInstance.delete(`admin/redis/${key}`, header);
@@ -389,12 +561,13 @@ const getRedis = async (
 ) => {
     let key = req?.params?.id;
     try {
-        // let admin = await adminModel.findOne({ where: { name: "1209002201" } });
+        // let admin = await adminModel.findOne({ where: { name: "0202000000" } });
         const authHeader = req.headers["authorization"];
         const token = authHeader && authHeader.split(" ")[1];
+        var decoded = await jwt.verify(token, process.env.jwt);
         let header = {
             headers: {
-                Authorization: `Bearer ${token}`
+                Authorization: `Bearer ${decoded?.token}`
             }
         };
         const data = await httpInstance.get(`admin/redis/${key}`, header);
@@ -429,5 +602,6 @@ module.exports = {
     addRemoveRedis,
     deleteRedis,
     getRedis,
-    clearCheckerRedis
+    clearCheckerRedis,
+    autoGenGames
 }

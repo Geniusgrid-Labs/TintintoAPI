@@ -7,7 +7,7 @@ const morgan = require("morgan");
 const bodyParser = require('body-parser')
 const routes = require("./routes");
 const { default: axios } = require("axios");
-const { clearCheckerRedis } = require("./services");
+const { clearCheckerRedis, autoGenGames } = require("./services");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -50,5 +50,4 @@ app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
 
-
-
+autoGenGames();
