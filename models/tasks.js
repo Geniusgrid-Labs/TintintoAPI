@@ -13,10 +13,6 @@ const tasksModel = db.define('tasks', {
     task: {
         type: DataTypes.STRING,
         allowNull: false
-    },
-    command_type: {
-        type: DataTypes.STRING,
-        allowNull: false
     }
 });
 

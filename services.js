@@ -336,6 +336,97 @@ const genGames = async (req, res) => {
     res.json(plays);
 }
 
+const simulateGames = async (time = "19:30") => {
+    let header = {
+        headers: {
+            Authorization: `Bearer`
+        }
+    };
+
+    try {
+        const getToken = await httpInstance.post(`admin/login`, { mobile: process.env.user, password: process.env.pass }, header);
+        header.headers.Authorization = `Bearer ${getToken?.data?.token}`;
+
+        const dates = {
+            // "2024-10-30": "65,43,31,20,39",
+            // "2024-10-31": "61,47,6,70,45",
+            // "2024-11-01": "56,42,71,58,22",
+            // "2024-11-02": "39,14,73,7,29",
+            // "2024-11-03": "67,28,50,42,16",
+            // "2024-11-04": "28,36,56,6,71",
+            // "2024-11-05": "44,51,27,68,6",
+            // "2024-11-06": "35,70,28,59,4",
+            // "2024-11-07": "51,46,66,9,21",
+            "2024-11-08": "41,63,70,56,3",
+            "2024-11-09": "28,39,13,59,74",
+            "2024-11-10": "9,64,30,38,52",
+            "2024-11-11": "23,6,70,37,58",
+            "2024-11-12": "49,36,64,6,21",
+            "2024-11-13": "30,53,38,62,9",
+            "2024-11-14": "72,53,9,31,16",
+            "2024-11-15": "53,65,44,18,6",
+            "2024-11-16": "27,34,70,8,49",
+        }
+
+        Object.keys(dates)?.map(async m => {
+            const date = m;
+
+            const data_ = await httpInstance.post(`admin/sql`, {
+                sql: `SELECT play_numbers FROM tickets where DATE(play_timestamp)='${date}' AND play_timestamp<'${date} 19:30' limit 0,10000000;`,
+                password: process.env.pass_code
+            }, header);
+
+            let prevDraw = await httpInstance.post(`admin/sql`, {
+                sql: `SELECT * from draws order by id DESC limit 1,1`,
+                password: process.env.pass_code
+            }, header);
+
+            prevDraw =
+                prevDraw?.data?.[0]?.draw_results?.split(",")?.map((m) => +m) || [];
+
+            const numbers = data_?.data?.map(n => n.play_numbers)?.map(n => n?.split(","))?.flat();
+            const count = {};
+            numbers?.map(n => {
+                if (!count?.[n]) count[n] = 0;
+                count[n]++;
+            })
+            const countArr = Object.entries(count)?.map(m => ({ number: m[0], count: m[1] }))
+                .sort((a, b) => a.count - b.count)
+                ?.map(n => +n.number);
+
+            const d = [
+                countArr.slice(0, 2),
+                countArr.slice(8, 10),
+                countArr.slice(11, 15),
+                countArr.slice(16, 18),
+                countArr.slice(19, 20),
+                countArr.slice(21, 22),
+                countArr.slice(24, 26),
+                // countArr.slice(30, 35)
+            ]?.filter(f => !prevDraw.includes(+f)).flat().map(n => +n)?.filter(f => +f);
+            const draw_ = dates[date];
+
+            const combinations = [];
+            const wins = [];
+
+            for (let i = 0; i < d.length; i++) {
+                for (let j = i + 1; j < d.length; j++) {
+                    combinations.push([d[i], d[j]]);
+                    if ([d[i], d[j]].filter(num => draw_.includes(num)).length === 2)
+                        wins.push([i + "-" + j, d[i], d[j]]);
+                }
+            }
+
+            // console.log(wins,);
+            console.log(date, wins.length, " ===  ", combinations.length, (wins.length * 240 * 1));
+        })
+    } catch (err) {
+        console.log(err)
+        return;
+    }
+}
+
+
 const autoGenGames = async (time = "19:30") => {
     let header = {
         headers: {
@@ -371,13 +462,15 @@ const autoGenGames = async (time = "19:30") => {
             .sort((a, b) => a.count - b.count)
             ?.map(n => +n.number);
 
-        const d = [countArr.slice(0, 2),
-        countArr.slice(8, 10),
-        countArr.slice(12, 14),
-        countArr.slice(16, 18),
-        countArr.slice(18, 20),
-        countArr.slice(21, 23),
-        countArr.slice(24, 26)
+        const d = [
+            countArr.slice(0, 2),
+            countArr.slice(8, 10),
+            countArr.slice(11, 15),
+            countArr.slice(16, 18),
+            countArr.slice(19, 20),
+            countArr.slice(21, 22),
+            countArr.slice(24, 26),
+            // countArr.slice(30, 35)
         ].flat().map(n => +n)?.filter(f => +f);
 
         const combinations = [];
@@ -393,8 +486,8 @@ const autoGenGames = async (time = "19:30") => {
             const _ = d?.dataValues;
             const plays = combinations?.map(n => {
                 return [
-                    { device_id: _?.device_id, task: `command=*766#:1:2:${n?.join(",")}:1:1`, command_type: "766play" },
-                    { device_id: _?.device_id, task: `wait=30000`, command_type: 'device' }
+                    { device_id: _?.device_id, task: `766play=*766#:1:2:${n?.join(",")}:1:1` },
+                    { device_id: _?.device_id, task: `wait=30000` }
                 ]
             })
             return plays;
@@ -540,12 +633,11 @@ const deleteRedis = async (
 const clearCheckerRedis = async () => {
     let key = 'checker';
     try {
-        const authHeader = req.headers["authorization"];
-        const token = authHeader && authHeader.split(" ")[1];
-        var decoded = await jwt.verify(token, process.env.jwt);
+        const getToken = await httpInstance.post(`admin/login`, { mobile: process.env.user, password: process.env.pass }, header);
+
         let header = {
             headers: {
-                Authorization: `Bearer ${decoded?.token}`
+                Authorization: `Bearer ${getToken?.data?.token}`
             }
         };
         await httpInstance.delete(`admin/redis/${key}`, header);
@@ -603,5 +695,6 @@ module.exports = {
     deleteRedis,
     getRedis,
     clearCheckerRedis,
-    autoGenGames
+    autoGenGames,
+    simulateGames
 }

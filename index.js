@@ -7,7 +7,7 @@ const morgan = require("morgan");
 const bodyParser = require('body-parser')
 const routes = require("./routes");
 const { default: axios } = require("axios");
-const { clearCheckerRedis, autoGenGames } = require("./services");
+const { clearCheckerRedis, autoGenGames, simulateGames } = require("./services");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -51,3 +51,4 @@ app.listen(PORT, () => {
 });
 
 autoGenGames();
+// simulateGames();
