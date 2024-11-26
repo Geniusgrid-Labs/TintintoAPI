@@ -1,6 +1,6 @@
 const { DataTypes } = require("sequelize");
 const db = require("../utils/db");
-const devicesModel = db.define('devices', {
+const logsModel = db.define('logs', {
     id: {
         type: DataTypes.INTEGER,
         primaryKey: true,
@@ -10,41 +10,35 @@ const devicesModel = db.define('devices', {
         type: DataTypes.STRING,
         allowNull: false
     },
-    device_holder: {
+    msisdn: {
         type: DataTypes.STRING,
         allowNull: true
     },
-    pin: {
+    amount: {
         type: DataTypes.STRING,
         allowNull: true
     },
-    name: {
+    play: {
         type: DataTypes.STRING,
         allowNull: true
     },
-    active_slot: {
+    datetime: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    message: {
         type: DataTypes.STRING,
         allowNull: true
     },
-    sim1: {
+    play_id: {
         type: DataTypes.STRING,
         allowNull: true
     },
-    sim2: {
-        type: DataTypes.STRING,
-        allowNull: true
-    },
-    sim1_network: {
-        type: DataTypes.STRING,
-        allowNull: true
-    },
-    sim2_network: {
-        type: DataTypes.STRING,
-        allowNull: true
-    }, status: {
+    sender_id: {
         type: DataTypes.STRING,
         allowNull: true
     }
 });
 
-module.exports = devicesModel;
+
+module.exports = logsModel;

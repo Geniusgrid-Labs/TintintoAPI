@@ -1,4 +1,4 @@
-POST http://localhost:28090/api/v1.0/login
+POST http://165.227.135.105:28090/api/v1.0/login
 Content-Type : application/json
 
 {

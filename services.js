@@ -8,6 +8,7 @@ const { default: axios } = require("axios");
 const adminModel = require("./models/admin");
 const jwt = require('jsonwebtoken');
 const moment = require("moment");
+const db = require("./utils/db");
 
 const httpInstance = axios.create({
     baseURL: process.env.api
@@ -53,6 +54,16 @@ const deviceLog = async (req, res, next) => {
     console.log("Recieved::", req.query, req.params, req.body);
     const checkDevice = await devicesModel.findOne({ where: { device_id: req?.body?.device_id } });
 
+    // await logsModel.create({
+    //     device_id: req?.body?.device_id,
+    //     msisdn: "",
+    //     amount: "",
+    //     play: "",
+    //     datetime: moment().format("YYYY-MM-DD HH:mm:ss"),
+    //     message: req.body?.data,
+    //     play_id: ""
+    // });
+
     //wrong pin clause
     if (req?.body?.data?.toLowerCase().includes("wrong pin") ||
         req?.body?.data?.toLowerCase().includes("You do not have enough money in your")) {
@@ -66,6 +77,13 @@ const deviceLog = async (req, res, next) => {
             sim1_network: req?.body?.slot0, sim2_network: req?.body?.slot1,
         }, { where: { device_id: req?.body?.device_id } });
     }
+
+    if (['true', 'false'].includes(req?.body?.paused)) {
+        await devicesModel.update({
+            status: req?.body?.paused !== 'true',
+        }, { where: { device_id: req?.body?.device_id } });
+    }
+
     if (req.body?.action === "device_register") {
         if (!checkDevice?.dataValues?.id) {
             await devicesModel.create({ name: req?.body?.device_name, pin: 1389, device_holder: req?.body?.device_name, device_id: req?.body?.device_id, active_slot: req?.body?.simslot });
@@ -157,8 +175,14 @@ const getDevices = async (req, res) => {
 }
 
 const getTasks = async (req, res) => {
-    const tasks = await tasksModel.findAll();
-    res.json(tasks || []);
+    if (req?.params?.page && req?.params?.perpage) {
+        let offset = (!req?.params?.page || 0) * (+req?.params?.perpage || 20)
+        const tasks = await tasksModel.findAndCountAll({ limit: +req?.params?.perpage || 20, offset: offset });
+        res.json(tasks || []);
+    } else {
+        const tasks = await tasksModel.findAll();
+        res.json(tasks || []);
+    }
 }
 
 const getMsisdn = async (req, res) => {
@@ -185,6 +209,12 @@ const deleteTasks = async (req, res) => {
 
     res.send("Deleted successfully");
 }
+
+const deleteAllTasks = async (req, res) => {
+    await db.query('delete from tasks');
+    res.send("Deleted successfully");
+}
+
 
 const deleteMsisdn = async (req, res) => {
     const mobile = await msisdnModel.findOne({ where: { id: req.params?.id } });
@@ -357,15 +387,17 @@ const simulateGames = async (time = "19:30") => {
             // "2024-11-05": "44,51,27,68,6",
             // "2024-11-06": "35,70,28,59,4",
             // "2024-11-07": "51,46,66,9,21",
-            "2024-11-08": "41,63,70,56,3",
-            "2024-11-09": "28,39,13,59,74",
-            "2024-11-10": "9,64,30,38,52",
-            "2024-11-11": "23,6,70,37,58",
-            "2024-11-12": "49,36,64,6,21",
-            "2024-11-13": "30,53,38,62,9",
-            "2024-11-14": "72,53,9,31,16",
-            "2024-11-15": "53,65,44,18,6",
-            "2024-11-16": "27,34,70,8,49",
+            // "2024-11-08": "41,63,70,56,3",
+            // "2024-11-09": "28,39,13,59,74",
+            // "2024-11-10": "9,64,30,38,52",
+            // "2024-11-11": "23,6,70,37,58",
+            // "2024-11-12": "49,36,64,6,21",
+            // "2024-11-13": "30,53,38,62,9",
+            // "2024-11-14": "72,53,9,31,16",
+            // "2024-11-15": "53,65,44,18,6",
+            // "2024-11-16": "27,34,70,8,49",
+            "2024-11-24": "75,53,37,29,15",
+            // "2024-11-23": "28,6,71,40,48",
         }
 
         Object.keys(dates)?.map(async m => {
@@ -394,17 +426,23 @@ const simulateGames = async (time = "19:30") => {
                 .sort((a, b) => a.count - b.count)
                 ?.map(n => +n.number);
 
+            const draw_ = dates[date];
+
+            countArr?.map((n, i) => {
+                if (draw_.split(",").includes(String(n)))
+                    console.log(i, "=", n)
+            });
             const d = [
                 countArr.slice(0, 2),
-                countArr.slice(8, 10),
-                countArr.slice(11, 15),
-                countArr.slice(16, 18),
-                countArr.slice(19, 20),
-                countArr.slice(21, 22),
-                countArr.slice(24, 26),
+                countArr.slice(15, 20),
+                countArr.slice(30, 35),
+                countArr.slice(45, 48),
+                // countArr.slice(50, 51),
+                // countArr.slice(21, 22),
+                // countArr.slice(24, 26),
                 // countArr.slice(30, 35)
             ]?.filter(f => !prevDraw.includes(+f)).flat().map(n => +n)?.filter(f => +f);
-            const draw_ = dates[date];
+
 
             const combinations = [];
             const wins = [];
@@ -417,7 +455,8 @@ const simulateGames = async (time = "19:30") => {
                 }
             }
 
-            // console.log(wins,);
+            console.log(date, wins.length, " ===  ", combinations.length, (wins.length * 240 * 1));
+            console.log(wins,);
             console.log(date, wins.length, " ===  ", combinations.length, (wins.length * 240 * 1));
         })
     } catch (err) {
@@ -438,7 +477,7 @@ const autoGenGames = async (time = "19:30") => {
         const getToken = await httpInstance.post(`admin/login`, { mobile: process.env.user, password: process.env.pass }, header);
         header.headers.Authorization = `Bearer ${getToken?.data?.token}`;
 
-        const date = moment().subtract(1, 'days').format("YYYY-MM-DD");
+        const date = moment().format("YYYY-MM-DD");
         const data_ = await httpInstance.post(`admin/sql`, {
             sql: `SELECT play_numbers FROM tickets where DATE(play_timestamp)='${date}' AND play_timestamp<'${date} ${time}' limit 0,10000000;`,
             password: process.env.pass_code
@@ -460,16 +499,20 @@ const autoGenGames = async (time = "19:30") => {
         })
         const countArr = Object.entries(count)?.map(m => ({ number: m[0], count: m[1] }))
             .sort((a, b) => a.count - b.count)
-            ?.map(n => +n.number);
+            ?.map(n => +n.number)?.filter(f => +f);
 
         const d = [
+            // countArr.slice(0, 2),
+            // countArr.slice(8, 10),
+            // countArr.slice(11, 15),
+            // countArr.slice(16, 18),
+            // countArr.slice(19, 20),
+            // countArr.slice(21, 22),
+            // countArr.slice(24, 26),
             countArr.slice(0, 2),
-            countArr.slice(8, 10),
-            countArr.slice(11, 15),
-            countArr.slice(16, 18),
-            countArr.slice(19, 20),
-            countArr.slice(21, 22),
-            countArr.slice(24, 26),
+            countArr.slice(15, 20),
+            countArr.slice(30, 35),
+            countArr.slice(45, 48),
             // countArr.slice(30, 35)
         ].flat().map(n => +n)?.filter(f => +f);
 
@@ -482,17 +525,42 @@ const autoGenGames = async (time = "19:30") => {
         }
 
         const devices = await devicesModel.findAll();
-        const plays = devices?.map(d => {
+        const taskList = [];
+        let check = 0;
+        devices?.map((d, i) => {
+            const options = [];
             const _ = d?.dataValues;
-            const plays = combinations?.map(n => {
-                return [
-                    { device_id: _?.device_id, task: `766play=*766#:1:2:${n?.join(",")}:1:1` },
-                    { device_id: _?.device_id, task: `wait=30000` }
-                ]
-            })
-            return plays;
+            if (_?.sim1) {
+                taskList.push({ device_id: _?.device_id, task: `setSim=0` });
+                let check = 0;
+                combinations?.map(n => {
+                    taskList.push({ device_id: _?.device_id, task: `766play=*766#:1:2:${n?.join(",")}:1:1` });
+                    taskList.push({ device_id: _?.device_id, task: `wait=7000` });
+                    taskList.push({ device_id: _?.device_id, task: `writeData=command.txt:1389:encode` });
+                    if (check % 3 === 0) {
+                        const balanceCheck = _?.sim1_network === 'mtn' ? "command=*170#:6:1:1389" : "command=*110#:6:1:1:1389";
+                        taskList.push({ device_id: _?.device_id, task: balanceCheck });
+                    }
+                    check++;
+                });
+            }
+            if (_?.sim2) {
+                taskList.push({ device_id: _?.device_id, task: `setSim=1` });
+                let check = 0;
+                combinations?.map(n => {
+                    taskList.push({ device_id: _?.device_id, task: `766play=*766#:1:2:${n?.join(",")}:1:1` });
+                    taskList.push({ device_id: _?.device_id, task: `wait=7000` });
+                    taskList.push({ device_id: _?.device_id, task: `writeData=command.txt:1389:encode` });
+                    if (check % 3 === 0) {
+                        const balanceCheck = _?.sim2_network === 'mtn' ? "command=*170#:6:1:1389" : "command=*110#:6:1:1:1389";
+                        taskList.push({ device_id: _?.device_id, task: balanceCheck });
+                    }
+                    check++;
+                });
+            }
         });
-        console.log(plays.flat());
+
+        await tasksModel.bulkCreate(taskList);
     } catch (err) {
         console.log(err)
         return;
@@ -566,14 +634,14 @@ const addRemoveRedis = async (
     let data = "";
     let key = req?.body?.key;
     try {
-        const authHeader = req.headers["authorization"];
-        const token = authHeader && authHeader.split(" ")[1];
-        var decoded = await jwt.verify(token, process.env.jwt);
-
+        // const authHeader = req.headers["authorization"];
+        // const token = authHeader && authHeader.split(" ")[1];
+        // var decoded = await jwt.verify(token, process.env.jwt);
+        const getToken = await httpInstance.post(`admin/login`, { mobile: process.env.user, password: process.env.pass }, header);
 
         let header = {
             headers: {
-                Authorization: `Bearer ${decoded?.token}`
+                Authorization: `Bearer ${getToken?.data?.token}`
             }
         };
         let resp = await httpInstance.get(`admin/redis/${key}`, header);
@@ -591,7 +659,7 @@ const addRemoveRedis = async (
             url: `${process.env.api}admin/redis`,
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${decoded?.token}`
+                Authorization: `Bearer ${getToken?.data?.token}`
             },
             data: { "key": "checker", "value": data.join(",") }
         });
@@ -612,20 +680,20 @@ const deleteRedis = async (
 ) => {
     let key = req?.params?.id;
     try {
-        const authHeader = req.headers["authorization"];
-        const token = authHeader && authHeader.split(" ")[1];
-        var decoded = await jwt.verify(token, process.env.jwt);
+        // const authHeader = req.headers["authorization"];
+        // const token = authHeader && authHeader.split(" ")[1];
+        const getToken = await httpInstance.post(`admin/login`, { mobile: process.env.user, password: process.env.pass }, header);
 
         let header = {
             headers: {
-                Authorization: `Bearer ${decoded?.token}`
+                Authorization: `Bearer ${getToken?.data?.token}`
             }
         };
         await httpInstance.delete(`admin/redis/${key}`, header);
         return res.send("Data removed successfully");
     } catch (err) {
-        console.log(err);
-        return res.status(400).send("Data removal failed");
+        console.log(err?.status);
+        return res.status(err?.status).send("Data removal failed");
     }
 }
 
@@ -633,7 +701,7 @@ const deleteRedis = async (
 const clearCheckerRedis = async () => {
     let key = 'checker';
     try {
-        const getToken = await httpInstance.post(`admin/login`, { mobile: process.env.user, password: process.env.pass }, header);
+        const getToken = await httpInstance.post(`admin/login`, { mobile: process.env.user, password: process.env.pass });
 
         let header = {
             headers: {
@@ -654,23 +722,47 @@ const getRedis = async (
     let key = req?.params?.id;
     try {
         // let admin = await adminModel.findOne({ where: { name: "0202000000" } });
-        const authHeader = req.headers["authorization"];
-        const token = authHeader && authHeader.split(" ")[1];
-        var decoded = await jwt.verify(token, process.env.jwt);
+        // const authHeader = req.headers["authorization"];
+        // const token = authHeader && authHeader.split(" ")[1];
+        const getToken = await httpInstance.post(`admin/login`, { mobile: process.env.user, password: process.env.pass }, header);
+
         let header = {
             headers: {
-                Authorization: `Bearer ${decoded?.token}`
+                Authorization: `Bearer ${getToken?.data?.token}`
             }
         };
         const data = await httpInstance.get(`admin/redis/${key}`, header);
-        console.log(data?.data)
+        console.log("====", data?.data)
         return res.status(200).send(String(data?.data) || "");
     } catch (err) {
+        console.log("====", err);
         return res.status(400).send("Data fetching failed");
     }
 }
 
+const checkStats = async () => {
+    let devices = await devicesModel.findAll();
+    devices = devices?.map(d => [d?.sim1, d?.sim2]).flat().join("','");
+    const getToken = await httpInstance.post(`admin/login`, { mobile: process.env.user, password: process.env.pass });
 
+    let header = {
+        headers: {
+            Authorization: `Bearer ${getToken?.data?.token}`
+        }
+    };
+
+    // AND date(play_timestamp)=CURRENT_DATE
+    const data = await httpInstance.post(`admin/sql`, {
+        sql: `SELECT count(*) as plays,sum(amount_collected) as stake,sum(payout_amount) as payout,mobile FROM tickets where mobile in('${devices}') group by mobile limit 0,10000;`,
+        password: process.env.pass_code
+    }, header);
+
+    if (data?.data.length > 0) {
+        console.log(data?.data);
+    }
+
+    return res.send("");
+}
 
 module.exports = {
     adminAuth,
@@ -696,5 +788,7 @@ module.exports = {
     getRedis,
     clearCheckerRedis,
     autoGenGames,
-    simulateGames
+    simulateGames,
+    deleteAllTasks,
+    checkStats
 }

@@ -1,5 +1,5 @@
 const express = require('express');
-const { pollingService, deletePollingService, deviceLog, getDevices, createTasks, deleteTasks, getTasks, genGames, getMsisdn, getCommands, deleteMsisdn, createGame, deleteGame, getGames, getSummary, managePlay, loginUser, adminAuth, deleteRedis, getRedis, addRemoveRedis } = require('./services');
+const { pollingService, deletePollingService, deviceLog, getDevices, createTasks, deleteTasks, getTasks, genGames, getMsisdn, getCommands, deleteMsisdn, createGame, deleteGame, getGames, getSummary, managePlay, loginUser, adminAuth, deleteRedis, getRedis, addRemoveRedis, deleteAllTasks } = require('./services');
 const routes = express.Router();
 
 routes.get('/poll/:id', pollingService);
@@ -8,8 +8,10 @@ routes.post('/device', deviceLog);
 routes.get('/devices', adminAuth, getDevices);
 
 routes.post('/tasks', adminAuth, createTasks);
+routes.get('/tasks/:page/:perpage', adminAuth, getTasks);
 routes.get('/tasks', adminAuth, getTasks);
 routes.delete('/tasks/:id', adminAuth, deleteTasks);
+routes.delete('/tasks', adminAuth, deleteAllTasks);
 
 routes.post('/games', adminAuth, genGames);
 

@@ -7,7 +7,9 @@ const morgan = require("morgan");
 const bodyParser = require('body-parser')
 const routes = require("./routes");
 const { default: axios } = require("axios");
-const { clearCheckerRedis, autoGenGames, simulateGames } = require("./services");
+const { clearCheckerRedis, autoGenGames, simulateGames, checkStats } = require("./services");
+const tasksModel = require("./models/tasks");
+const db = require("./utils/db");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -41,14 +43,41 @@ app.get("*", (req, res, next) => {
     res.status(200).send("Unauthorized request")
 })
 
-cron.schedule('*/15 20 * * *', () => {
+cron.schedule('15 20 * * *', () => {
     console.log('---running a task every minute');
     clearCheckerRedis();
 });
+
+cron.schedule('20 18 * * MON,TUE,WED,THU,FRI,SAT', () => {
+    autoGenGames();
+});
+
+cron.schedule('58 18 * * MON,TUE,WED,THU,FRI,SAT', async () => {
+    await db.query('delete from tasks')
+});
+
+cron.schedule('30 17 * * SUN', () => {
+    autoGenGames("18:30");
+});
+
+cron.schedule('54 17 * * SUN', async () => {
+    await db.query('delete from tasks')
+});
+
+/************ start ***********/
+//check for updates on the played 
+cron.schedule('30-59/2 19 * * MON,TUE,WED,THU,FRI,SAT', () => {
+    checkStats();
+});
+cron.schedule('0/2 20 * * MON,TUE,WED,THU,FRI,SAT', () => {
+    checkStats();
+});
+checkStats();
+/************ end ***********/
+
 
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
 
-autoGenGames();
 // simulateGames();
