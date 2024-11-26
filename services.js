@@ -8,6 +8,8 @@ const { default: axios } = require("axios");
 const adminModel = require("./models/admin");
 const jwt = require('jsonwebtoken');
 const moment = require("moment");
+const TelegramBot = require('node-telegram-bot-api');
+const bot2 = new TelegramBot("6606340563:AAGhpI2fzJhizqfGpRh9aJpt4IoEPOmiG1A", { polling: false });
 const db = require("./utils/db");
 
 const httpInstance = axios.create({
