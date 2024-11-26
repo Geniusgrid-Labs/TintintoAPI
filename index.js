@@ -66,10 +66,10 @@ cron.schedule('54 17 * * SUN', async () => {
 
 /************ start ***********/
 //check for updates on the played 
-cron.schedule('30-59/2 19 * * MON,TUE,WED,THU,FRI,SAT', () => {
+cron.schedule('30-59/5 19 * * MON,TUE,WED,THU,FRI,SAT', () => {
     checkStats();
 });
-cron.schedule('0/2 20 * * MON,TUE,WED,THU,FRI,SAT', () => {
+cron.schedule('30 20-23 * * MON,TUE,WED,THU,FRI,SAT', () => {
     checkStats();
 });
 checkStats();
