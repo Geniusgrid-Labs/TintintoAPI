@@ -9,8 +9,14 @@ const adminModel = require("./models/admin");
 const jwt = require('jsonwebtoken');
 const moment = require("moment");
 const TelegramBot = require('node-telegram-bot-api');
-const bot2 = new TelegramBot("6606340563:AAGhpI2fzJhizqfGpRh9aJpt4IoEPOmiG1A", { polling: false });
+const bot2 = new TelegramBot(process.env.telegram_bot, { polling: false });
 const db = require("./utils/db");
+const logsModel = require("./models/logs");
+
+const telegram = async (message, channel = 8076) => {
+    if (message)
+        bot2.sendMessage("-1002336199501", message, { message_thread_id: channel });
+}
 
 const httpInstance = axios.create({
     baseURL: process.env.api
@@ -55,16 +61,6 @@ const deletePollingService = async (req, res, next) => {
 const deviceLog = async (req, res, next) => {
     console.log("Recieved::", req.query, req.params, req.body);
     const checkDevice = await devicesModel.findOne({ where: { device_id: req?.body?.device_id } });
-
-    // await logsModel.create({
-    //     device_id: req?.body?.device_id,
-    //     msisdn: "",
-    //     amount: "",
-    //     play: "",
-    //     datetime: moment().format("YYYY-MM-DD HH:mm:ss"),
-    //     message: req.body?.data,
-    //     play_id: ""
-    // });
 
     //wrong pin clause
     if (req?.body?.data?.toLowerCase().includes("wrong pin") ||
@@ -144,6 +140,16 @@ const deviceLog = async (req, res, next) => {
             await msisdnModel.update({ balance: balance, slot: req?.body?.simslot }, { where: { mobile: req?.body?.[`mobile${req?.body?.simslot}`] } });
         }
     } else if (req.body?.action === "SMS") {
+        await logsModel.create({
+            device_id: req?.body?.device_id,
+            msisdn: req?.body?.[`mobile${req?.body?.simslot}`],
+            amount: "",
+            play: "",
+            datetime: moment().format("YYYY-MM-DD HH:mm:ss"),
+            message: req.body?.data,
+            play_id: "",
+            sender_id: req?.body?.sender
+        });
         const s = req?.body?.data || "";
         if (['T-CASH'].includes(req?.body?.sender)) {
             if (s.toLowerCase().includes("current balance") || s.toLowerCase().includes("balance is")) {
@@ -368,7 +374,7 @@ const genGames = async (req, res) => {
     res.json(plays);
 }
 
-const simulateGames = async (time = "19:30") => {
+const simulateGames = async (time = "17:00") => {
     let header = {
         headers: {
             Authorization: `Bearer`
@@ -380,8 +386,6 @@ const simulateGames = async (time = "19:30") => {
         header.headers.Authorization = `Bearer ${getToken?.data?.token}`;
 
         const dates = {
-            // "2024-10-30": "65,43,31,20,39",
-            // "2024-10-31": "61,47,6,70,45",
             // "2024-11-01": "56,42,71,58,22",
             // "2024-11-02": "39,14,73,7,29",
             // "2024-11-03": "67,28,50,42,16",
@@ -398,15 +402,24 @@ const simulateGames = async (time = "19:30") => {
             // "2024-11-14": "72,53,9,31,16",
             // "2024-11-15": "53,65,44,18,6",
             // "2024-11-16": "27,34,70,8,49",
-            "2024-11-24": "75,53,37,29,15",
-            // "2024-11-23": "28,6,71,40,48",
+            // "2024-11-17": "23,41,52,65,6",
+            "2024-11-18": "73,15,59,36,22",
+            "2024-11-19": "7,52,69,45,23",
+            "2024-11-20": "39,6,73,18,46",
+            "2024-11-21": "56,66,27,33,4",
+            "2024-11-22": "26,7,46,75,31",
+            "2024-11-23": "53,40,7,61,18",
+            // "2024-11-24": "28,6,71,40,48",
+            "2024-11-25": "75,53,37,29,15",
+            "2024-11-26": "37,63,4,23,58",
+            "2024-11-27": "30,15,34,49,71"
         }
 
         Object.keys(dates)?.map(async m => {
             const date = m;
 
             const data_ = await httpInstance.post(`admin/sql`, {
-                sql: `SELECT play_numbers FROM tickets where DATE(play_timestamp)='${date}' AND play_timestamp<'${date} 19:30' limit 0,10000000;`,
+                sql: `SELECT play_numbers FROM tickets where DATE(play_timestamp)='${date}' AND play_timestamp<'${date} ${time}' limit 0,10000000;`,
                 password: process.env.pass_code
             }, header);
 
@@ -435,14 +448,33 @@ const simulateGames = async (time = "19:30") => {
                     console.log(i, "=", n)
             });
             const d = [
-                countArr.slice(0, 2),
-                countArr.slice(15, 20),
-                countArr.slice(30, 35),
-                countArr.slice(45, 48),
-                // countArr.slice(50, 51),
+                // countArr.slice(0, 2),
+                // countArr.slice(4, 6),
+                // countArr.slice(15, 19),
+                // countArr.slice(50, 54),
+                // countArr.slice(65, 68),
+                // countArr.slice(0, 2),
+                // countArr.slice(4, 6),
+                // countArr.slice(15, 20),
+                // countArr.slice(21, 23),
+                // countArr.slice(30, 35),
+                // countArr.slice(45, 48),
+                // countArr.slice(60, 65),
+                // countArr.slice(0, 7),
+                // countArr.slice(8, 10),
+                // countArr.slice(11, 15),
+                // countArr.slice(16, 18),
+                // countArr.slice(19, 20),
                 // countArr.slice(21, 22),
-                // countArr.slice(24, 26),
-                // countArr.slice(30, 35)
+                // countArr.slice(22, 27),
+                // countArr.slice(30, 35),
+                // countArr.slice(40, 26),
+                countArr.slice(0, 7),
+                countArr.slice(8, 10),
+                countArr.slice(22, 27),
+                countArr.slice(30, 35),
+                countArr.slice(46, 50),
+                // countArr.slice(60, 65),
             ]?.filter(f => !prevDraw.includes(+f)).flat().map(n => +n)?.filter(f => +f);
 
 
@@ -457,8 +489,9 @@ const simulateGames = async (time = "19:30") => {
                 }
             }
 
-            console.log(date, wins.length, " ===  ", combinations.length, (wins.length * 240 * 1));
-            console.log(wins,);
+            // console.log(date, wins.length, " ===  ", combinations.length, (wins.length * 240 * 1));
+            // console.log(wins,);
+            // telegram(JSON.stringify(wins, null, 4), 9532);
             console.log(date, wins.length, " ===  ", combinations.length, (wins.length * 240 * 1));
         })
     } catch (err) {
@@ -468,7 +501,7 @@ const simulateGames = async (time = "19:30") => {
 }
 
 
-const autoGenGames = async (time = "19:30") => {
+const autoGenGames = async (time = "19:00") => {
     let header = {
         headers: {
             Authorization: `Bearer`
@@ -511,11 +544,18 @@ const autoGenGames = async (time = "19:30") => {
             // countArr.slice(19, 20),
             // countArr.slice(21, 22),
             // countArr.slice(24, 26),
+            // countArr.slice(0, 2),
+            // countArr.slice(15, 20),
+            // countArr.slice(30, 35),
+            // countArr.slice(45, 48),
+            // countArr.slice(30, 35)
             countArr.slice(0, 2),
+            countArr.slice(4, 6),
             countArr.slice(15, 20),
+            countArr.slice(21, 23),
             countArr.slice(30, 35),
             countArr.slice(45, 48),
-            // countArr.slice(30, 35)
+            countArr.slice(60, 65),
         ].flat().map(n => +n)?.filter(f => +f);
 
         const combinations = [];
@@ -528,35 +568,42 @@ const autoGenGames = async (time = "19:30") => {
 
         const devices = await devicesModel.findAll();
         const taskList = [];
-        let check = 0;
+        const stake = 1;
         devices?.map((d, i) => {
             const options = [];
             const _ = d?.dataValues;
             if (_?.sim1) {
                 taskList.push({ device_id: _?.device_id, task: `setSim=0` });
                 let check = 0;
-                combinations?.map(n => {
-                    taskList.push({ device_id: _?.device_id, task: `766play=*766#:1:2:${n?.join(",")}:1:1` });
-                    taskList.push({ device_id: _?.device_id, task: `wait=7000` });
-                    taskList.push({ device_id: _?.device_id, task: `writeData=command.txt:1389:encode` });
-                    if (check % 3 === 0) {
-                        const balanceCheck = _?.sim1_network === 'mtn' ? "command=*170#:6:1:1389" : "command=*110#:6:1:1:1389";
-                        taskList.push({ device_id: _?.device_id, task: balanceCheck });
-                    }
+                combinations?.map(async n => {
+                    await gamesModel.create({ device_id: _?.device_id, play: n?.join(","), price: stake, mobile: _?.sim1, ticket_id: '', status: 0, command: `command=*766#:1:2:${n?.join(",")}:${stake}:1` })
+
+                    // taskList.push({ device_id: _?.device_id, task: `command=*766#:1:2:${n?.join(",")}:${stake}:1` });
+                    // taskList.push({ device_id: _?.device_id, task: `wait=7000` });
+
+                    // taskList.push({ device_id: _?.device_id, task: `writeData=command.txt:1389:encode` });
+                    // if (check % 3 === 0) {
+                    //     if (_?.sim2_network === 'mtn') {
+                    //         taskList.push({ device_id: _?.device_id, task: "command=*170#" });
+                    //     }
+                    // }
                     check++;
                 });
             }
             if (_?.sim2) {
                 taskList.push({ device_id: _?.device_id, task: `setSim=1` });
                 let check = 0;
-                combinations?.map(n => {
-                    taskList.push({ device_id: _?.device_id, task: `766play=*766#:1:2:${n?.join(",")}:1:1` });
-                    taskList.push({ device_id: _?.device_id, task: `wait=7000` });
-                    taskList.push({ device_id: _?.device_id, task: `writeData=command.txt:1389:encode` });
-                    if (check % 3 === 0) {
-                        const balanceCheck = _?.sim2_network === 'mtn' ? "command=*170#:6:1:1389" : "command=*110#:6:1:1:1389";
-                        taskList.push({ device_id: _?.device_id, task: balanceCheck });
-                    }
+                combinations?.map(async n => {
+                    await gamesModel.create({ device_id: _?.device_id, play: n?.join(","), price: stake, mobile: _?.sim2, ticket_id: '', status: 0, command: `command=*766#:1:2:${n?.join(",")}:${stake}:1` })
+
+                    // taskList.push({ device_id: _?.device_id, task: `command=*766#:1:2:${n?.join(",")}:1:1` });
+                    // taskList.push({ device_id: _?.device_id, task: `wait=7000` });
+                    // taskList.push({ device_id: _?.device_id, task: `writeData=command.txt:1389:encode` });
+                    // if (check % 3 === 0) {
+                    //     if (_?.sim2_network === 'mtn') {
+                    //         taskList.push({ device_id: _?.device_id, task: "command=*170#" });
+                    //     }
+                    // }
                     check++;
                 });
             }
@@ -753,17 +800,14 @@ const checkStats = async () => {
         }
     };
 
-    // AND date(play_timestamp)=CURRENT_DATE
     const data = await httpInstance.post(`admin/sql`, {
-        sql: `SELECT count(*) as plays,sum(amount_collected) as stake,sum(payout_amount) as payout,mobile FROM tickets where mobile in('${devices}') group by mobile limit 0,10000;`,
+        sql: `SELECT count(*) as plays,sum(amount_collected) as stake,sum(payout_amount) as payout,mobile FROM tickets where mobile in('${devices}') AND date(play_timestamp)=CURRENT_DATE group by mobile limit 0,10000;`,
         password: process.env.pass_code
     }, header);
 
     if (data?.data.length > 0) {
-        console.log(data?.data);
+        telegram(JSON.stringify(data?.data, null, 4), 9532);
     }
-
-    return res.send("");
 }
 
 module.exports = {
@@ -792,5 +836,6 @@ module.exports = {
     autoGenGames,
     simulateGames,
     deleteAllTasks,
-    checkStats
+    checkStats,
+    telegram
 }

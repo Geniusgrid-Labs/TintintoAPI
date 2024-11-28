@@ -48,7 +48,7 @@ cron.schedule('15 20 * * *', () => {
     clearCheckerRedis();
 });
 
-cron.schedule('20 18 * * MON,TUE,WED,THU,FRI,SAT', () => {
+cron.schedule('0 18 * * MON,TUE,WED,THU,FRI,SAT', () => {
     autoGenGames();
 });
 
@@ -56,7 +56,7 @@ cron.schedule('58 18 * * MON,TUE,WED,THU,FRI,SAT', async () => {
     await db.query('delete from tasks')
 });
 
-cron.schedule('30 17 * * SUN', () => {
+cron.schedule('0 17 * * SUN', () => {
     autoGenGames("18:30");
 });
 
@@ -66,18 +66,18 @@ cron.schedule('54 17 * * SUN', async () => {
 
 /************ start ***********/
 //check for updates on the played 
-cron.schedule('30-59/5 19 * * MON,TUE,WED,THU,FRI,SAT', () => {
+cron.schedule('*/5 18-19 * * *', () => {
     checkStats();
 });
-cron.schedule('30 20-23 * * MON,TUE,WED,THU,FRI,SAT', () => {
+cron.schedule('*/30 20-23 * * *', () => {
     checkStats();
 });
-checkStats();
+
 /************ end ***********/
-
-
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
 
-// simulateGames();
+// checkStats();
+// autoGenGames();
+simulateGames();

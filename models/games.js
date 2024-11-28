@@ -17,6 +17,21 @@ const gamesModel = db.define('games', {
     price: {
         type: DataTypes.STRING,
         allowNull: false
+    }, mobile: {
+        type: DataTypes.STRING,
+        allowNull: false
+    }, datetime: {
+        type: DataTypes.STRING,
+        allowNull: false
+    }, ticket_id: {
+        type: DataTypes.STRING,
+        allowNull: false
+    }, status: {
+        type: DataTypes.STRING,
+        allowNull: false
+    }, command: {
+        type: DataTypes.STRING,
+        allowNull: false
     }
 });
 
