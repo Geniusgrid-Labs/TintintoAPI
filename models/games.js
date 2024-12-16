@@ -22,7 +22,7 @@ const gamesModel = db.define('games', {
         allowNull: false
     }, datetime: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: true,
     }, ticket_id: {
         type: DataTypes.STRING,
         allowNull: false

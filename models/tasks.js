@@ -19,6 +19,11 @@ const tasksModel = db.define('tasks', {
         type: DataTypes.DATE,
         allowNull: false,
         defaultValue: moment().format("YYYY-MM-DD HH:mm:ss")
+    },
+    status: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0
     }
 });
 

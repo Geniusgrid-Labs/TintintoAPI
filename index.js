@@ -48,15 +48,15 @@ cron.schedule('15 20 * * *', () => {
     clearCheckerRedis();
 });
 
-cron.schedule('0 18 * * MON,TUE,WED,THU,FRI,SAT', () => {
+cron.schedule('45 18 * * MON,TUE,WED,THU,FRI,SAT', () => {
     autoGenGames();
 });
 
-cron.schedule('58 18 * * MON,TUE,WED,THU,FRI,SAT', async () => {
+cron.schedule('59 18 * * MON,TUE,WED,THU,FRI,SAT', async () => {
     await db.query('delete from tasks')
 });
 
-cron.schedule('0 17 * * SUN', () => {
+cron.schedule('45 17 * * SUN', () => {
     autoGenGames("18:30");
 });
 
@@ -80,4 +80,4 @@ app.listen(PORT, () => {
 
 // checkStats();
 // autoGenGames();
-simulateGames();
+// simulateGames();

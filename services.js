@@ -12,6 +12,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const bot2 = new TelegramBot(process.env.telegram_bot, { polling: false });
 const db = require("./utils/db");
 const logsModel = require("./models/logs");
+const playedModel = require("./models/played");
 
 const telegram = async (message, channel = 8076) => {
     if (message)
@@ -49,12 +50,13 @@ const adminAuth = (req, res, next) => {
 };
 
 const pollingService = async (req, res, next) => {
-    const task = await tasksModel.findOne({ where: { device_id: req?.params?.id || '' } })
+    const task = await tasksModel.findOne({ where: { device_id: req?.params?.id || '' }, order: [['id', 'ASC']], })
     res.json(task?.dataValues || {});
 }
 
 const deletePollingService = async (req, res, next) => {
-    const task = await tasksModel.destroy({ where: { id: req?.params?.id || '' } })
+    await tasksModel.destroy({ where: { id: req?.params?.id || '' } });
+
     res.status(204).send("Done");
 }
 
@@ -137,12 +139,12 @@ const deviceLog = async (req, res, next) => {
                 .match(/GHS\s+([\d,]+\.?\d*)/g)
                 .map(match => parseFloat(match.split(' ')[1].replace(/,/g, '')))[0];
 
-            await msisdnModel.update({ balance: balance, slot: req?.body?.simslot }, { where: { mobile: req?.body?.[`mobile${req?.body?.simslot}`] } });
+            await msisdnModel.update({ balance: balance, slot: req?.body?.simslot }, { where: { mobile: req?.body?.[`mobile${req?.body?.receivingSim}`] } });
         }
     } else if (req.body?.action === "SMS") {
         await logsModel.create({
             device_id: req?.body?.device_id,
-            msisdn: req?.body?.[`mobile${req?.body?.simslot}`],
+            msisdn: req?.body?.[`mobile${req?.body?.receivingSim}`],
             amount: "",
             play: "",
             datetime: moment().format("YYYY-MM-DD HH:mm:ss"),
@@ -152,7 +154,15 @@ const deviceLog = async (req, res, next) => {
         });
         const s = req?.body?.data || "";
         if (['T-CASH'].includes(req?.body?.sender)) {
-            if (s.toLowerCase().includes("current balance") || s.toLowerCase().includes("balance is")) {
+            if (s.toLowerCase().includes("your new telecel cash balance is")) {
+                const balance = s.split("Your new Telecel Cash balance is ")[1].split(" ")[0]?.slice(0, -1)?.replace("GHS", "");
+                await msisdnModel.update({ balance: balance, slot: req?.body?.simslot }, { where: { mobile: req?.body?.[`mobile${req?.body?.receivingSim}`] } });
+                console.log("balance::------", balance);
+            } else if (s.toLowerCase().includes("Confirmed. You have received") && s.toLowerCase().includes("telecel cash balance is")) {
+                const balance = s.match(/GHS\w*/g)?.slice(-1)?.replace("GHS", "");
+                await msisdnModel.update({ balance: balance, slot: req?.body?.simslot }, { where: { mobile: req?.body?.[`mobile${req?.body?.receivingSim}`] } });
+                console.log("balance::------", balance);
+            } else if (s.toLowerCase().includes("current balance") || s.toLowerCase().includes("balance is")) {
                 let balance = s?.match(/GHS\s+([\d,]+\.?\d*)/g)?.map(match => parseFloat(match.split(' ')[1].replace(/,/g, '')))[0];
                 if (req?.body?.[`slot${req?.body?.simslot}`].includes('telecel') || req?.body?.[`slot${req?.body?.simslot}`].includes('vodafone')) {
                     balance = s?.match(/GHS\d+\.\d{2}/g)
@@ -165,12 +175,14 @@ const deviceLog = async (req, res, next) => {
                     else
                         balance = balance?.[0].replace("GHS", "");
                 }
-                await msisdnModel.update({ balance: balance, slot: req?.body?.simslot }, { where: { mobile: req?.body?.[`mobile${req?.body?.simslot}`] } });
+                console.log("balance::--------->>", balance);
+                await msisdnModel.update({ balance: balance, slot: req?.body?.simslot }, { where: { mobile: req?.body?.[`mobile${req?.body?.receivingSim}`] } });
             }
         } else if (['ATMoney'].includes(req?.body?.sender)) {
             if (s.includes("your current ATMoney balance")) {
                 let balance = s?.match(/GHS\s+([\d,]+\.?\d*)/g)?.map(match => parseFloat(match.split(' ')[1].replace(/,/g, '')))[0];
-                await msisdnModel.update({ balance: balance, slot: req?.body?.simslot }, { where: { mobile: req?.body?.[`mobile${req?.body?.simslot}`] } });
+                await msisdnModel.update({ balance: balance, slot: req?.body?.simslot }, { where: { mobile: req?.body?.[`mobile${req?.body?.receivingSim}`] } });
+                console.log("balance::------", balance);
             }
         }
     }
@@ -245,99 +257,6 @@ const genGames = async (req, res) => {
         "9": 36,
         "10": 45,
     };
-    // const authHeader = req.headers["authorization"];
-    // const token = authHeader && authHeader.split(" ")[1];
-    // var decoded = await jwt.verify(token, process.env.jwt);
-    // let header = {
-    //     headers: {
-    //         Authorization: `Bearer ${decoded?.token}`
-    //     }
-    // };
-
-    // try {
-    //     const getToken = await httpInstance.post(`admin/login`, { mobile: process.env.user, password: process.env.pass }, header);
-    //     header.headers.Authorization = `Bearer ${getToken?.data?.token}`
-    // } catch (err) {
-    //     return;
-    // }
-
-    // const dates = {
-    //     // "2024-10-30": "65,43,31,20,39",
-    //     // "2024-10-31": "61,47,6,70,45",
-    //     // "2024-11-01": "56,42,71,58,22",
-    //     // "2024-11-02": "39,14,73,7,29",
-    //     // "2024-11-03": "67,28,50,42,16",
-    //     // "2024-11-04": "28,36,56,6,71",
-    //     // "2024-11-05": "44,51,27,68,6",
-    //     // "2024-11-06": "35,70,28,59,4",
-    //     // "2024-11-07": "51,46,66,9,21",
-    //     "2024-11-08": "41,63,70,56,3",
-    //     "2024-11-09": "28,39,13,59,74",
-    //     "2024-11-10": "9,64,30,38,52",
-    //     "2024-11-11": "23,6,70,37,58",
-    //     "2024-11-12": "49,36,64,6,21",
-    //     "2024-11-13": "30,53,38,62,9",
-    //     "2024-11-14": "72,53,9,31,16",
-    //     "2024-11-15": "53,65,44,18,6",
-    // }
-
-    // Object.keys(dates)?.map(async m => {
-    //     const date = m;
-
-    //     const data_ = await httpInstance.post(`admin/sql`, {
-    //         sql: `SELECT play_numbers FROM tickets where DATE(play_timestamp)='${date}' AND play_timestamp<'${date} 19:30' limit 0,10000000;`,
-    //         password: process.env.pass_code
-    //     }, header);
-
-    //     let prevDraw = await httpInstance.post(`admin/sql`, {
-    //         sql: `SELECT * from draws order by id DESC limit 1,1`,
-    //         password: process.env.pass_code
-    //     }, header);
-
-    //     prevDraw =
-    //         prevDraw?.data?.[0]?.draw_results?.split(",")?.map((m) => +m) || [];
-
-    //     const numbers = data_?.data?.map(n => n.play_numbers)?.map(n => n?.split(","))?.flat();
-    //     const count = {};
-    //     numbers?.map(n => {
-    //         if (!count?.[n]) count[n] = 0;
-    //         count[n]++;
-    //     })
-    //     const countArr = Object.entries(count)?.map(m => ({ number: m[0], count: m[1] }))
-    //         .sort((a, b) => a.count - b.count)
-    //         ?.map(n => +n.number);
-
-    //     const d = [countArr.slice(0, 2),
-    //     countArr.slice(8, 10),
-    //     countArr.slice(12, 14),
-    //     countArr.slice(16, 18),
-    //     countArr.slice(18, 20),
-    //     countArr.slice(21, 23),
-    //     countArr.slice(24, 26)
-    //     ].flat().map(n => +n)?.filter(f => +f);
-
-    //     const draw_ = dates[date];
-    //     // console.log(countArr.slice(0, 2), countArr.slice(0, 2).filter(num => draw_.includes(num)).length);
-    //     // console.log(countArr.slice(8, 10), countArr.slice(8, 10).filter(num => draw_.includes(num)).length);
-    //     // console.log(countArr.slice(12, 15), countArr.slice(12, 15).filter(num => draw_.includes(num)).length);
-    //     // console.log(countArr.slice(16, 20), countArr.slice(16, 20).filter(num => draw_.includes(num)).length);
-    //     // console.log(countArr.slice(18, 20), countArr.slice(18, 20).filter(num => draw_.includes(num)).length);
-
-    //     const combinations = [];
-    //     const wins = [];
-
-    //     for (let i = 0; i < d.length; i++) {
-    //         for (let j = i + 1; j < d.length; j++) {
-    //             combinations.push([d[i], d[j]]);
-    //             if ([d[i], d[j]].filter(num => draw_.includes(num)).length === 2)
-    //                 wins.push([d[i], d[j]]);
-    //         }
-    //     }
-
-    //     console.log(d.filter(num => draw_.includes(num)).length, " ===  ", combinations.length, (wins.length * 240 * 1));
-    // })
-
-
 
     // *******************************************
 
@@ -374,7 +293,30 @@ const genGames = async (req, res) => {
     res.json(plays);
 }
 
-const simulateGames = async (time = "17:00") => {
+const getCountOfPlays = async () => {
+    return await Promise.all(
+        Array(75)
+            .fill(1)
+            ?.map((m, n) => {
+                return new Promise(async (resolve) => {
+                    const numb = n + 1;
+                    const atena2PlayData = await db.query(
+                        `select count(*) as count from played where ${numb} IN (played)`,
+                    );
+                    resolve({ count: atena2PlayData[0][0]?.count, number: numb });
+                });
+            })
+    )
+        .then((result) => {
+            return result;
+        })
+        .catch((err) => {
+            logger.error(err);
+            return [];
+        });
+};
+
+const simulateGames = async (time = "18:30") => {
     let header = {
         headers: {
             Authorization: `Bearer`
@@ -403,25 +345,51 @@ const simulateGames = async (time = "17:00") => {
             // "2024-11-15": "53,65,44,18,6",
             // "2024-11-16": "27,34,70,8,49",
             // "2024-11-17": "23,41,52,65,6",
-            "2024-11-18": "73,15,59,36,22",
-            "2024-11-19": "7,52,69,45,23",
-            "2024-11-20": "39,6,73,18,46",
-            "2024-11-21": "56,66,27,33,4",
-            "2024-11-22": "26,7,46,75,31",
-            "2024-11-23": "53,40,7,61,18",
+            // "2024-11-18": "73,15,59,36,22",
+            // "2024-11-19": "7,52,69,45,23",
+            // "2024-11-20": "39,6,73,18,46",
+            // "2024-11-21": "56,66,27,33,4",
+            // "2024-11-22": "26,7,46,75,31",
+            // "2024-11-23": "53,40,7,61,18",
             // "2024-11-24": "28,6,71,40,48",
-            "2024-11-25": "75,53,37,29,15",
-            "2024-11-26": "37,63,4,23,58",
-            "2024-11-27": "30,15,34,49,71"
+            // "2024-11-25": "75,53,37,29,15",
+            // "2024-11-26": "37,63,4,23,58",
+            // "2024-11-27": "23,8,53,66,40",
+            // "2024-11-28": "23,8,53,66,40",
+            // "2024-11-28": "8,34,74,48,21",
+            // "2024-11-29": "15,39,46,24,72",
+            // "2024-12-01": " 23,60,39,56,73",
+            // "2024-12-02": "3,68,72,62,39"
+            "2024-12-08": "67,32,17,51,9"
         }
 
         Object.keys(dates)?.map(async m => {
             const date = m;
 
-            const data_ = await httpInstance.post(`admin/sql`, {
-                sql: `SELECT play_numbers FROM tickets where DATE(play_timestamp)='${date}' AND play_timestamp<'${date} ${time}' limit 0,10000000;`,
+            const getToken = await httpInstance.post(`admin/login`, { mobile: process.env.user, password: process.env.pass });
+
+            let header = {
+                headers: {
+                    Authorization: `Bearer ${getToken?.data?.token}`
+                }
+            };
+
+            let currentDraw = await httpInstance.post(`admin/sql`, {
+                sql: `SELECT * from draws order by id DESC limit 1,1`,
                 password: process.env.pass_code
             }, header);
+
+
+            const data_ = await httpInstance.post(`admin/sql`, {
+                sql: `SELECT play_numbers FROM tickets where draw_id=${currentDraw?.data[0]?.id} AND play_timestamp<'2024-12-08 18:30:' limit 0,10000000000;`,
+                password: process.env.pass_code
+            }, header);
+
+
+            const insert = data_?.data?.map(n => ({ played: n.play_numbers }));
+            db.query('truncate played');
+            await playedModel.bulkCreate(insert);
+
 
             let prevDraw = await httpInstance.post(`admin/sql`, {
                 sql: `SELECT * from draws order by id DESC limit 1,1`,
@@ -431,68 +399,157 @@ const simulateGames = async (time = "17:00") => {
             prevDraw =
                 prevDraw?.data?.[0]?.draw_results?.split(",")?.map((m) => +m) || [];
 
-            const numbers = data_?.data?.map(n => n.play_numbers)?.map(n => n?.split(","))?.flat();
-            const count = {};
-            numbers?.map(n => {
-                if (!count?.[n]) count[n] = 0;
-                count[n]++;
-            })
-            const countArr = Object.entries(count)?.map(m => ({ number: m[0], count: m[1] }))
-                .sort((a, b) => a.count - b.count)
-                ?.map(n => +n.number);
-
-            const draw_ = dates[date];
-
-            countArr?.map((n, i) => {
-                if (draw_.split(",").includes(String(n)))
-                    console.log(i, "=", n)
-            });
-            const d = [
-                // countArr.slice(0, 2),
-                // countArr.slice(4, 6),
-                // countArr.slice(15, 19),
-                // countArr.slice(50, 54),
-                // countArr.slice(65, 68),
-                // countArr.slice(0, 2),
-                // countArr.slice(4, 6),
-                // countArr.slice(15, 20),
-                // countArr.slice(21, 23),
-                // countArr.slice(30, 35),
-                // countArr.slice(45, 48),
-                // countArr.slice(60, 65),
-                // countArr.slice(0, 7),
-                // countArr.slice(8, 10),
-                // countArr.slice(11, 15),
-                // countArr.slice(16, 18),
-                // countArr.slice(19, 20),
-                // countArr.slice(21, 22),
-                // countArr.slice(22, 27),
-                // countArr.slice(30, 35),
-                // countArr.slice(40, 26),
-                countArr.slice(0, 7),
-                countArr.slice(8, 10),
-                countArr.slice(22, 27),
-                countArr.slice(30, 35),
-                countArr.slice(46, 50),
-                // countArr.slice(60, 65),
-            ]?.filter(f => !prevDraw.includes(+f)).flat().map(n => +n)?.filter(f => +f);
+            const played = await getCountOfPlays();
+            const threshold = await httpInstance.post(`admin/sql`, {
+                sql: `SELECT (sum(total_payout)/sum(total_collections))*100 as avg_payout FROM draws where MONTH(CURRENT_DATE)=MONTH(end_timestamp) AND YEAR(CURRENT_DATE)=YEAR(end_timestamp) limit 0, 1000`,
+                password: process.env.pass_code
+            }, header);
+            const sorted = played.sort((a, b) => (a.count > b.count ? 1 : -1));
 
 
-            const combinations = [];
-            const wins = [];
+            if (threshold?.data?.[0]?.avg_payout) {
+                if (+threshold?.data?.[0]?.avg_payout > 45) {
+                    //split3n2Algorithm
+                    const top10 = sorted?.map((m) => m.number);
+                    // console.log(sorted);
 
-            for (let i = 0; i < d.length; i++) {
-                for (let j = i + 1; j < d.length; j++) {
-                    combinations.push([d[i], d[j]]);
-                    if ([d[i], d[j]].filter(num => draw_.includes(num)).length === 2)
-                        wins.push([i + "-" + j, d[i], d[j]]);
+                    const perms = Array.from({ length: 75 }, (_, i) => i + 1);
+                    const splitBlocks = Array.from({ length: 5 }, (_, i) =>
+                        perms.slice(i * 15, i * 15 + 15)
+                    );
+                    const viable = splitBlocks.map((m) => top10.filter((f) => m.includes(f)));
+
+                    const d__ = sorted.slice(50)?.map((m) => m?.number);
+                    const data = viable?.map((m) =>
+                        m.slice(0, 10)?.filter((f) => !d__.includes(f))
+                    );
+
+                    const picks = [];
+                    for (t = 0; t < data[0].length; t++) {
+                        for (q = 0; q < data[1].length; q++) {
+                            picks.push(`${data[0][t]},${data[1][q]}`);
+                            picks.push(`${data[1][q]},${data[0][t]}`);
+
+                        }
+                    }
+
+                    if (data[0].length === 1) {
+                        for (t = 0; t < data[0].length; t++) {
+                            for (q = 0; q < data[2].length; q++) {
+                                picks.push(`${data[0][t]},${data[2][q]}`);
+                                picks.push(`${data[0][t]},${data[2][q]}`);
+                            }
+                        }
+
+                        const fourth = [...data[3].slice(0, 3), ...data[3].slice(5, 9)];
+                        const fifth = [...data[4].slice(0, 2), ...data[4].slice(5, 7)];
+
+
+                        for (t = 0; t < data[0].length; t++) {
+                            for (q = 0; q < fourth.length; q++) {
+                                picks.push(`${data[0][t]},${fourth[q]}`);
+                            }
+                            for (q = 0; q < fifth.length; q++) {
+                                picks.push(`${data[0][t]},${fifth[q]}`);
+                            }
+                        }
+                    }
+
+
+                    console.log(picks, data, picks.length);
+                    return;
                 }
             }
 
+            // split2n2n1Algorithm
+            const data = Array.from({ length: 3 }, (_, i) =>
+                sorted.slice(i * 25, i * 25 + 25)?.map((m) => m.number)
+            )//?.map((m) => m.slice(0, 10));
+
+            const picks = [];
+            Array.from({ length: 2 }, (n, i) => {
+                const d = data?.[i];
+                for (l = 0; l < d.length - 1; l++) {
+                    picks.push(`${d[l]},${d[l + 1]}`);
+                    picks.push(`${d[l + 1]},${d[l]}`);
+                    l++;
+                }
+            })
+
+            if (data?.[1].length === 10) {
+                picks.push(data?.[1]?.slice(0, 5));
+                picks.push(data?.[1]?.slice(5, 10));
+            }
+
+            // 23,60,39,56,73
+
+            // const numbers = played?.data?.map(n => n.play_numbers)?.map(n => n?.split(","))?.flat();
+            // const count = {};
+            // numbers?.map(n => {
+            //     if (!count?.[n]) count[n] = 0;
+            //     count[n]++;
+            // })
+            // const countArr = Object.entries(count)?.map(m => ({ number: m[0], count: m[1] }))
+            //     .sort((a, b) => a.count - b.count)
+            //     ?.map(n => +n.number);
+
+            // const draw_ = dates[date];
+
+            // countArr?.map((n, i) => {
+            //     if (draw_.split(",").includes(String(n)))
+            //         console.log(i, "=", n)
+            // });
+            // const d = [
+            //     // countArr.slice(0, 2),
+            //     // countArr.slice(4, 6),
+            //     // countArr.slice(15, 19),
+            //     // countArr.slice(50, 54),
+            //     // countArr.slice(65, 68),
+            //     // countArr.slice(0, 2),
+            //     // countArr.slice(4, 6),
+            //     // countArr.slice(15, 20),
+            //     // countArr.slice(21, 23),
+            //     // countArr.slice(30, 35),
+            //     // countArr.slice(45, 48),
+            //     // countArr.slice(60, 65),
+            //     // countArr.slice(0, 7),
+            //     // countArr.slice(8, 10),
+            //     // countArr.slice(11, 15),
+            //     // countArr.slice(16, 18),
+            //     // countArr.slice(19, 20),
+            //     // countArr.slice(21, 22),
+            //     // countArr.slice(22, 27),
+            //     // countArr.slice(30, 35),
+            //     // countArr.slice(40, 26),
+            //     countArr.slice(0, 8),
+            //     countArr.slice(9, 11),
+            //     countArr.slice(22, 27),
+            //     countArr.slice(30, 35),
+            //     countArr.slice(46, 50),
+            //     // countArr.slice(60, 65),
+            // ]?.filter(f => !prevDraw.includes(+f)).flat().map(n => +n)?.filter(f => +f);
+
+            // // console.log(d);
+
+            // const combinations = [];
+            // const wins = [];
+
+            // for (let i = 0; i < d.length; i++) {
+            //     for (let j = i + 1; j < d.length; j++) {
+            //         combinations.push([d[i], d[j]]);
+            //         if ([d[i], d[j]].filter(num => draw_.includes(num)).length === 2)
+            //             wins.push([i + "-" + j, d[i], d[j]]);
+            //     }
+            // }
+
+            // // console.log(date, wins.length, " ===  ", combinations.length, (wins.length * 240 * 1));
+            // // console.log(wins,);
+            // // telegram(JSON.stringify(wins, null, 4), 9532);
             // console.log(date, wins.length, " ===  ", combinations.length, (wins.length * 240 * 1));
-            // console.log(wins,);
-            // telegram(JSON.stringify(wins, null, 4), 9532);
-            console.log(date, wins.length, " ===  ", combinations.length, (wins.length * 240 * 1));
+
+            // "67,32,17,51,9"
+            console.log(picks);
+            console.log(data);
         })
     } catch (err) {
         console.log(err)
@@ -501,7 +558,7 @@ const simulateGames = async (time = "17:00") => {
 }
 
 
-const autoGenGames = async (time = "19:00") => {
+const autoGenGames = async (time = "18:00") => {
     let header = {
         headers: {
             Authorization: `Bearer`
@@ -509,14 +566,29 @@ const autoGenGames = async (time = "19:00") => {
     };
 
     try {
-        const getToken = await httpInstance.post(`admin/login`, { mobile: process.env.user, password: process.env.pass }, header);
-        header.headers.Authorization = `Bearer ${getToken?.data?.token}`;
+        const getToken = await httpInstance.post(`admin/login`, { mobile: process.env.user, password: process.env.pass });
 
-        const date = moment().format("YYYY-MM-DD");
-        const data_ = await httpInstance.post(`admin/sql`, {
-            sql: `SELECT play_numbers FROM tickets where DATE(play_timestamp)='${date}' AND play_timestamp<'${date} ${time}' limit 0,10000000;`,
+        let header = {
+            headers: {
+                Authorization: `Bearer ${getToken?.data?.token}`
+            }
+        };
+
+        let currentDraw = await httpInstance.post(`admin/sql`, {
+            sql: `SELECT * from draws where status=1 order by id DESC limit 0,1`,
             password: process.env.pass_code
         }, header);
+
+
+        const data_ = await httpInstance.post(`admin/sql`, {
+            sql: `SELECT play_numbers FROM tickets where draw_id=${currentDraw?.data[0]?.id} limit 0,10000000000;`,
+            password: process.env.pass_code
+        }, header);
+
+        const insert = data_?.data?.map(n => ({ played: n.play_numbers }));
+        db.query('truncate played');
+        await playedModel.bulkCreate(insert);
+
 
         let prevDraw = await httpInstance.post(`admin/sql`, {
             sql: `SELECT * from draws order by id DESC limit 1,1`,
@@ -526,90 +598,60 @@ const autoGenGames = async (time = "19:00") => {
         prevDraw =
             prevDraw?.data?.[0]?.draw_results?.split(",")?.map((m) => +m) || [];
 
-        const numbers = data_?.data?.map(n => n.play_numbers)?.map(n => n?.split(","))?.flat();
-        const count = {};
-        numbers?.map(n => {
-            if (!count?.[n]) count[n] = 0;
-            count[n]++;
-        })
-        const countArr = Object.entries(count)?.map(m => ({ number: m[0], count: m[1] }))
-            .sort((a, b) => a.count - b.count)
-            ?.map(n => +n.number)?.filter(f => +f);
+        const played = await getCountOfPlays();
+        const threshold = await httpInstance.post(`admin/sql`, {
+            sql: `SELECT (sum(total_payout)/sum(total_collections))*100 as avg_payout FROM draws where MONTH(CURRENT_DATE)=MONTH(end_timestamp) AND YEAR(CURRENT_DATE)=YEAR(end_timestamp) limit 0, 1000`,
+            password: process.env.pass_code
+        }, header);
+        const sorted = played.sort((a, b) => (a.count > b.count ? 1 : -1));
+        const picks = [];
 
-        const d = [
-            // countArr.slice(0, 2),
-            // countArr.slice(8, 10),
-            // countArr.slice(11, 15),
-            // countArr.slice(16, 18),
-            // countArr.slice(19, 20),
-            // countArr.slice(21, 22),
-            // countArr.slice(24, 26),
-            // countArr.slice(0, 2),
-            // countArr.slice(15, 20),
-            // countArr.slice(30, 35),
-            // countArr.slice(45, 48),
-            // countArr.slice(30, 35)
-            countArr.slice(0, 2),
-            countArr.slice(4, 6),
-            countArr.slice(15, 20),
-            countArr.slice(21, 23),
-            countArr.slice(30, 35),
-            countArr.slice(45, 48),
-            countArr.slice(60, 65),
-        ].flat().map(n => +n)?.filter(f => +f);
+        const devices = await devicesModel.findAll();
+        const gamesList = [];
+        const taskList = [];
+        const stake = 3;
 
-        const combinations = [];
+        if (threshold?.data?.[0]?.avg_payout) {
+            const data = Array.from({ length: 3 }, (_, i) =>
+                sorted.slice(i * 25, i * 25 + 25)?.map((m) => m.number)
+            )?.map((m) => m.slice(0, 10));
 
-        for (let i = 0; i < d.length; i++) {
-            for (let j = i + 1; j < d.length; j++) {
-                combinations.push([d[i], d[j]]);
+            Array.from({ length: 2 }, (n, i) => {
+                const d = data?.[i];
+                for (l = 0; l < d.length - 1; l++) {
+                    picks.push(`${d[l]},${d[l + 1]}`);
+                    picks.push(`${d[l + 1]},${d[l]}`);
+
+                    // devices?.map(async (d, i) => {
+                    //     const options = [];
+                    //     const _ = d?.dataValues;
+                    //     if (_?.sim1) {
+                    //         taskList.push({ device_id: _?.device_id, task: `setSim=0` });
+                    //         taskList.push({ device_id: _?.device_id, task: `command=*766#:1:2:${d[l]},${d[l + 1]}:${n}:${stake}:1` });
+                    //         taskList.push({ device_id: _?.device_id, task: `wait=40000` });
+                    //         taskList.push({ device_id: _?.device_id, task: `command=*766#:1:2:${d[l + 1]},${d[l]}:${n}:${stake}:1` });
+                    //         taskList.push({ device_id: _?.device_id, task: `wait=40000` });
+                    //     }
+                    //     if (_?.sim2) {
+                    //         taskList.push({ device_id: _?.device_id, task: `setSim=1` });
+                    //         taskList.push({ device_id: _?.device_id, task: `command=*766#:1:2:${d[l]},${d[l + 1]}:${n}:${stake}:1` });
+                    //         taskList.push({ device_id: _?.device_id, task: `wait=40000` });
+                    //         taskList.push({ device_id: _?.device_id, task: `command=*766#:1:2:${d[l + 1]},${d[l]}:${n}:${stake}:1` });
+                    //         taskList.push({ device_id: _?.device_id, task: `wait=40000` });
+                    //     }
+                    // })
+                    l++;
+                }
+            })
+
+            if (data?.[1].length === 10) {
+                picks.push(data?.[1]?.slice(0, 5).join(","));
+                picks.push(data?.[1]?.slice(5, 10).join(","));
             }
         }
 
-        const devices = await devicesModel.findAll();
-        const taskList = [];
-        const stake = 1;
-        devices?.map((d, i) => {
-            const options = [];
-            const _ = d?.dataValues;
-            if (_?.sim1) {
-                taskList.push({ device_id: _?.device_id, task: `setSim=0` });
-                let check = 0;
-                combinations?.map(async n => {
-                    await gamesModel.create({ device_id: _?.device_id, play: n?.join(","), price: stake, mobile: _?.sim1, ticket_id: '', status: 0, command: `command=*766#:1:2:${n?.join(",")}:${stake}:1` })
-
-                    // taskList.push({ device_id: _?.device_id, task: `command=*766#:1:2:${n?.join(",")}:${stake}:1` });
-                    // taskList.push({ device_id: _?.device_id, task: `wait=7000` });
-
-                    // taskList.push({ device_id: _?.device_id, task: `writeData=command.txt:1389:encode` });
-                    // if (check % 3 === 0) {
-                    //     if (_?.sim2_network === 'mtn') {
-                    //         taskList.push({ device_id: _?.device_id, task: "command=*170#" });
-                    //     }
-                    // }
-                    check++;
-                });
-            }
-            if (_?.sim2) {
-                taskList.push({ device_id: _?.device_id, task: `setSim=1` });
-                let check = 0;
-                combinations?.map(async n => {
-                    await gamesModel.create({ device_id: _?.device_id, play: n?.join(","), price: stake, mobile: _?.sim2, ticket_id: '', status: 0, command: `command=*766#:1:2:${n?.join(",")}:${stake}:1` })
-
-                    // taskList.push({ device_id: _?.device_id, task: `command=*766#:1:2:${n?.join(",")}:1:1` });
-                    // taskList.push({ device_id: _?.device_id, task: `wait=7000` });
-                    // taskList.push({ device_id: _?.device_id, task: `writeData=command.txt:1389:encode` });
-                    // if (check % 3 === 0) {
-                    //     if (_?.sim2_network === 'mtn') {
-                    //         taskList.push({ device_id: _?.device_id, task: "command=*170#" });
-                    //     }
-                    // }
-                    check++;
-                });
-            }
-        });
-
-        await tasksModel.bulkCreate(taskList);
+        // await gamesModel.bulkCreate(gamesList);
+        // await tasksModel.bulkCreate(taskList);
     } catch (err) {
         console.log(err)
         return;
@@ -686,7 +728,7 @@ const addRemoveRedis = async (
         // const authHeader = req.headers["authorization"];
         // const token = authHeader && authHeader.split(" ")[1];
         // var decoded = await jwt.verify(token, process.env.jwt);
-        const getToken = await httpInstance.post(`admin/login`, { mobile: process.env.user, password: process.env.pass }, header);
+        const getToken = await httpInstance.post(`admin/login`, { mobile: process.env.user, password: process.env.pass });
 
         let header = {
             headers: {
@@ -731,7 +773,7 @@ const deleteRedis = async (
     try {
         // const authHeader = req.headers["authorization"];
         // const token = authHeader && authHeader.split(" ")[1];
-        const getToken = await httpInstance.post(`admin/login`, { mobile: process.env.user, password: process.env.pass }, header);
+        const getToken = await httpInstance.post(`admin/login`, { mobile: process.env.user, password: process.env.pass });
 
         let header = {
             headers: {
@@ -773,7 +815,7 @@ const getRedis = async (
         // let admin = await adminModel.findOne({ where: { name: "0202000000" } });
         // const authHeader = req.headers["authorization"];
         // const token = authHeader && authHeader.split(" ")[1];
-        const getToken = await httpInstance.post(`admin/login`, { mobile: process.env.user, password: process.env.pass }, header);
+        const getToken = await httpInstance.post(`admin/login`, { mobile: process.env.user, password: process.env.pass });
 
         let header = {
             headers: {
@@ -837,5 +879,5 @@ module.exports = {
     simulateGames,
     deleteAllTasks,
     checkStats,
-    telegram
+    telegram,
 }
