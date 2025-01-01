@@ -131,7 +131,7 @@ const deviceLog = async (req, res, next) => {
             const commandList = [];
             commandList.push({ device_id: req?.body?.device_id, task: `writeData=${req?.body?.device_id}_slot${req?.body?.simslot}.txt:${m}` });
             commandList.push({ device_id: req?.body?.device_id, task: `setsim=${req?.body?.simslot}` });
-            commandList.push({ device_id: req?.body?.device_id, task: balanceCheck("slot" + req?.body?.[`slot${req?.body?.simslot}`]) });
+            commandList.push({ device_id: req?.body?.device_id, task: balanceCheck("slot" + req?.body?.[`slot${req?.body?.simslot}`], req?.body?.device_id) });
             commandList.push({ device_id: req?.body?.device_id, task: "wait=3000" });
             await tasksModel.bulkCreate(commandList)
         } else if (s.toLowerCase().includes("current balance")) {
@@ -139,7 +139,7 @@ const deviceLog = async (req, res, next) => {
                 .match(/GHS\s+([\d,]+\.?\d*)/g)
                 .map(match => parseFloat(match.split(' ')[1].replace(/,/g, '')))[0];
 
-            await msisdnModel.update({ balance: balance, slot: req?.body?.simslot }, { where: { mobile: req?.body?.[`mobile${req?.body?.receivingSim}`] } });
+            await msisdnModel.update({ balance: balance, slot: req?.body?.simslot }, { where: { mobile: req?.body?.[`mobile${req?.body?.receivingSim || req?.body?.simslot}`] } });
         }
     } else if (req.body?.action === "SMS") {
         await logsModel.create({
@@ -581,7 +581,7 @@ const autoGenGames = async (time = "18:00") => {
 
 
         const data_ = await httpInstance.post(`admin/sql`, {
-            sql: `SELECT play_numbers FROM tickets where draw_id=${currentDraw?.data[0]?.id} limit 0,10000000000;`,
+            sql: `SELECT play_numbers FROM tickets where draw_id=${currentDraw?.data?.[0]?.id} limit 0,10000000000;`,
             password: process.env.pass_code
         }, header);
 
@@ -604,6 +604,8 @@ const autoGenGames = async (time = "18:00") => {
             password: process.env.pass_code
         }, header);
         const sorted = played.sort((a, b) => (a.count > b.count ? 1 : -1));
+        console.log(sorted);
+
         const picks = [];
 
         const devices = await devicesModel.findAll();
@@ -611,47 +613,83 @@ const autoGenGames = async (time = "18:00") => {
         const taskList = [];
         const stake = 3;
 
+
+
+        const pairs = [];
         if (threshold?.data?.[0]?.avg_payout) {
             const data = Array.from({ length: 3 }, (_, i) =>
                 sorted.slice(i * 25, i * 25 + 25)?.map((m) => m.number)
-            )?.map((m) => m.slice(0, 10));
+            )//?.map((m) => m.slice(0, 10));
 
-            Array.from({ length: 2 }, (n, i) => {
-                const d = data?.[i];
-                for (l = 0; l < d.length - 1; l++) {
-                    picks.push(`${d[l]},${d[l + 1]}`);
-                    picks.push(`${d[l + 1]},${d[l]}`);
+            const dw = sorted.slice(0, 13)?.map((m) => m.number);
+            console.log(JSON.stringify(dw, null, 4));
 
-                    // devices?.map(async (d, i) => {
-                    //     const options = [];
-                    //     const _ = d?.dataValues;
-                    //     if (_?.sim1) {
-                    //         taskList.push({ device_id: _?.device_id, task: `setSim=0` });
-                    //         taskList.push({ device_id: _?.device_id, task: `command=*766#:1:2:${d[l]},${d[l + 1]}:${n}:${stake}:1` });
-                    //         taskList.push({ device_id: _?.device_id, task: `wait=40000` });
-                    //         taskList.push({ device_id: _?.device_id, task: `command=*766#:1:2:${d[l + 1]},${d[l]}:${n}:${stake}:1` });
-                    //         taskList.push({ device_id: _?.device_id, task: `wait=40000` });
-                    //     }
-                    //     if (_?.sim2) {
-                    //         taskList.push({ device_id: _?.device_id, task: `setSim=1` });
-                    //         taskList.push({ device_id: _?.device_id, task: `command=*766#:1:2:${d[l]},${d[l + 1]}:${n}:${stake}:1` });
-                    //         taskList.push({ device_id: _?.device_id, task: `wait=40000` });
-                    //         taskList.push({ device_id: _?.device_id, task: `command=*766#:1:2:${d[l + 1]},${d[l]}:${n}:${stake}:1` });
-                    //         taskList.push({ device_id: _?.device_id, task: `wait=40000` });
-                    //     }
-                    // })
-                    l++;
+            for (let i = 0; i < dw.length; i++) {
+                for (let j = i + 1; j < dw.length; j++) {
+                    pairs.push(`${dw[i]},${dw[j]}`);
+                    devices?.map(async (d, i) => {
+                        const options = [];
+                        const _ = d?.dataValues;
+                        if (_?.sim1) {
+                            taskList.push({ device_id: _?.device_id, task: `setSim=0` });
+                            taskList.push({ device_id: _?.device_id, task: `command=*766#:1:2:${dw[i]},${dw[j]}:${stake}:1` });
+                            taskList.push({ device_id: _?.device_id, task: `wait=40000` });
+                        }
+                        if (_?.sim2) {
+                            taskList.push({ device_id: _?.device_id, task: `setSim=1` });
+                            taskList.push({ device_id: _?.device_id, task: `command=*766#:1:2:${dw[i]},${dw[j]}:${stake}:1` });
+                            taskList.push({ device_id: _?.device_id, task: `wait=40000` });
+                        }
+                    })
                 }
-            })
-
-            if (data?.[1].length === 10) {
-                picks.push(data?.[1]?.slice(0, 5).join(","));
-                picks.push(data?.[1]?.slice(5, 10).join(","));
             }
+
+            // Array.from({ length: 2 }, (n, i) => {
+            //     const d = data?.[i];
+            //     for (l = 0; l < d.length - 1; l++) {
+            //         picks.push(`${d[l]},${d[l + 1]}`);
+            //         picks.push(`${d[l + 1]},${d[l]}`);
+
+            //         // devices?.map(async (d, i) => {
+            //         //     const options = [];
+            //         //     const _ = d?.dataValues;
+            //         //     if (_?.sim1) {
+            //         //         taskList.push({ device_id: _?.device_id, task: `setSim=0` });
+            //         //         taskList.push({ device_id: _?.device_id, task: `command=*766#:1:2:${d[l]},${d[l + 1]}:${n}:${stake}:1` });
+            //         //         taskList.push({ device_id: _?.device_id, task: `wait=40000` });
+            //         //         taskList.push({ device_id: _?.device_id, task: `command=*766#:1:2:${d[l + 1]},${d[l]}:${n}:${stake}:1` });
+            //         //         taskList.push({ device_id: _?.device_id, task: `wait=40000` });
+            //         //     }
+            //         //     if (_?.sim2) {
+            //         //         taskList.push({ device_id: _?.device_id, task: `setSim=1` });
+            //         //         taskList.push({ device_id: _?.device_id, task: `command=*766#:1:2:${d[l]},${d[l + 1]}:${n}:${stake}:1` });
+            //         //         taskList.push({ device_id: _?.device_id, task: `wait=40000` });
+            //         //         taskList.push({ device_id: _?.device_id, task: `command=*766#:1:2:${d[l + 1]},${d[l]}:${n}:${stake}:1` });
+            //         //         taskList.push({ device_id: _?.device_id, task: `wait=40000` });
+            //         //     }
+            //         // })
+            //         l++;
+            //     }
+            // })
+
+            // if (data?.[1].length === 10) {
+            // picks.push(data?.[1]?.slice(0, 5).join(","));
+            // picks.push(data?.[1]?.slice(5, 10).join(","));
+            // }
         }
 
+        // console.log("pairs::", pairs.length);
+        // const w = [8, 37, 21, 51, 75];
+        // const wins = pairs.map(f => {
+        //     const n = f?.split(",");
+        //     if (w.includes(+n[0]) && w.includes(+n[1])) return f;
+        //     return false;
+        // }).filter(f => f)
+        // console.log("wins  ====", JSON.stringify(wins, null, 4));
+        // console.log(JSON.stringify(picks, null, 4));
+
         // await gamesModel.bulkCreate(gamesList);
-        // await tasksModel.bulkCreate(taskList);
+        await tasksModel.bulkCreate(taskList);
     } catch (err) {
         console.log(err)
         return;

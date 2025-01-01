@@ -49,7 +49,7 @@ cron.schedule('15 20 * * *', () => {
 });
 
 cron.schedule('45 18 * * MON,TUE,WED,THU,FRI,SAT', () => {
-    autoGenGames();
+    // autoGenGames();
 });
 
 cron.schedule('59 18 * * MON,TUE,WED,THU,FRI,SAT', async () => {
@@ -57,7 +57,7 @@ cron.schedule('59 18 * * MON,TUE,WED,THU,FRI,SAT', async () => {
 });
 
 cron.schedule('45 17 * * SUN', () => {
-    autoGenGames("18:30");
+    // autoGenGames("18:30");
 });
 
 cron.schedule('54 17 * * SUN', async () => {
