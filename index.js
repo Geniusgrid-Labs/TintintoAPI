@@ -10,6 +10,7 @@ const { default: axios } = require("axios");
 const { clearCheckerRedis, autoGenGames, simulateGames, checkStats } = require("./services");
 const tasksModel = require("./models/tasks");
 const db = require("./utils/db");
+const { startTelegram } = require("./telegram");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -75,6 +76,7 @@ cron.schedule('*/30 20-23 * * *', () => {
 
 /************ end ***********/
 app.listen(PORT, () => {
+    startTelegram();
     console.log(`Server is running on http://localhost:${PORT}`);
 });
 
