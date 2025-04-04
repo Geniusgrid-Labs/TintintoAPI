@@ -62,6 +62,7 @@ const deletePollingService = async (req, res, next) => {
 
 const deviceLog = async (req, res, next) => {
     console.log("Recieved::", req.query, req.params, req.body);
+    telegram(JSON.stringify(req.body, null, 4), 9532);
     const checkDevice = await devicesModel.findOne({ where: { device_id: req?.body?.device_id } });
 
     //wrong pin clause
@@ -86,7 +87,14 @@ const deviceLog = async (req, res, next) => {
 
     if (req.body?.action === "device_register") {
         if (!checkDevice?.dataValues?.id) {
-            await devicesModel.create({ name: req?.body?.device_name, pin: 1389, device_holder: req?.body?.device_name, device_id: req?.body?.device_id, active_slot: req?.body?.simslot });
+            await devicesModel.create({
+                name: req?.body?.device_name, pin: 1389,
+                device_holder: req?.body?.device_name,
+                device_id: req?.body?.device_id,
+                active_slot: req?.body?.simslot,
+                sim1_network: req?.body?.slot0,
+                sim2_network: req?.body?.slot1
+            });
         }
 
         // create commands to check the numbers for each
@@ -175,14 +183,12 @@ const deviceLog = async (req, res, next) => {
                     else
                         balance = balance?.[0].replace("GHS", "");
                 }
-                console.log("balance::--------->>", balance);
                 await msisdnModel.update({ balance: balance, slot: req?.body?.simslot }, { where: { mobile: req?.body?.[`mobile${req?.body?.receivingSim}`] } });
             }
-        } else if (['ATMoney'].includes(req?.body?.sender)) {
-            if (s.includes("your current ATMoney balance")) {
-                let balance = s?.match(/GHS\s+([\d,]+\.?\d*)/g)?.map(match => parseFloat(match.split(' ')[1].replace(/,/g, '')))[0];
+        } else if (req?.body?.sender.includes('ATMoney')) {
+            if (s.includes("your current ATMoney balance is")) {
+                const balance = s?.split(" ")?.slice(-1)[0]?.slice(0, -1)?.replace("GHS", "");
                 await msisdnModel.update({ balance: balance, slot: req?.body?.simslot }, { where: { mobile: req?.body?.[`mobile${req?.body?.receivingSim}`] } });
-                console.log("balance::------", balance);
             }
         }
     }

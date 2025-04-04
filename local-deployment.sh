@@ -53,13 +53,13 @@ fi
 
 docker images --format "{{.Repository}}:{{.Tag}}" | grep "^tintinto_controller_api:" | xargs -r docker rmi
 
-container_ids=$(docker ps -q)
-# Loop through each container ID
-for id in $container_ids; do
-    echo "Processing container ID: $id"
+# container_ids=$(docker ps -q)
+# # Loop through each container ID
+# for id in $container_ids; do
+#     echo "Processing container ID: $id"
     
-    docker stop ${id}
-     docker rm ${id}
-done
+#     docker stop ${id}
+#      docker rm ${id}
+# done
 
 # y || docker volume prune -a

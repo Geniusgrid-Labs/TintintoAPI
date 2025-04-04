@@ -10,7 +10,8 @@ const { default: axios } = require("axios");
 const { clearCheckerRedis, autoGenGames, simulateGames, checkStats } = require("./services");
 const tasksModel = require("./models/tasks");
 const db = require("./utils/db");
-const { startTelegram } = require("./telegram");
+const startTelegram = require("./telegram");
+const { connectRabbitMQ } = require("./rabbit");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -73,13 +74,14 @@ cron.schedule('*/5 18-19 * * *', () => {
 cron.schedule('*/30 20-23 * * *', () => {
     checkStats();
 });
+startTelegram();
 
 /************ end ***********/
 app.listen(PORT, () => {
-    startTelegram();
     console.log(`Server is running on http://localhost:${PORT}`);
 });
 
+connectRabbitMQ();
 // checkStats();
 // autoGenGames();
 // simulateGames();

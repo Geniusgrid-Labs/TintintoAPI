@@ -5,6 +5,7 @@ const bot = new Telegraf(process.env.telegram_bot);
 const { default: axios } = require("axios");
 const express = require('express');
 const cors = require('cors');
+const { Server } = require('socket.io');
 const db = require('./utils/db');
 const msisdnModel = require("./models/msisdn");
 const { DBCheck } = require("./utils/helper");
@@ -16,8 +17,29 @@ const commandListModel = require("./models/commandList");
 const routes = require("./routes");
 const { validate, setDevice, setBalance } = require("./services");
 const TelegramBot = require('node-telegram-bot-api');
+const tasksModel = require("./models/tasks");
 const bot2 = new TelegramBot("6606340563:AAGhpI2fzJhizqfGpRh9aJpt4IoEPOmiG1A", { polling: false });
 /** server and socket  */
+
+
+const menuOptions = {
+    "Game Play": 1,
+    "Show numbers": 2,
+    "Redis Data": 3,
+    "DB Data": 4,
+    "Auto Play": 5,
+    "Socket Commands": 5,
+    "Main Menu": "#",
+    "Main menu": "#",
+    "1. Atena - 1 First": 1,
+    "2. Atena - 2": 2, "3. Perm - 2": 3,
+    "4. Banker": 4,
+    "0. Back": 0, "Main game": 1,
+    "1. Confirm": 1,
+    "4 Games": 4, "8 Games": 8, "10 Games": 10, "15 Games": 15, "20 Games": 20, "40 Games": 40,
+    "Yes": 1, "No": "0",
+    "Get Data": "1", "Set Data": "2", "Delete": "3", Back: "0"
+};
 
 var app = express();
 app.use(
@@ -58,6 +80,31 @@ const ussd = {
 }
 const vf = { "shortCode": "766", "msIsdn": "233208444900", "text": "*766#", "imsi": "", "optional": "", "ussdGwId": "Vodafone", "language": "null", "sessId": "5927584357" }
 
+var app = express();
+app.use(
+    cors({
+        credentials: true,
+    })
+);
+app.use(function (req, res, next) {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader(
+        "Access-Control-Allow-Methods",
+        "GET, POST, OPTIONS, PUT, PATCH, DELETE"
+    );
+    res.setHeader(
+        "Access-Control-Allow-Headers",
+        "Origin, X-Requested-With,content-type,Accept"
+    );
+    next();
+});
+
+var http_ = require('http').createServer(app);
+var io = new Server(http_, {
+    cors: {
+        origin: "*"
+    }
+})
 
 io.on('connection', function (socket) {
     console.log('Client connected to the WebSocket');
@@ -93,7 +140,7 @@ io.on('connection', function (socket) {
             //auto play check 
             if (s.includes("*766#") && s.endsWith("true")) {
                 let data_ = ussd;
-                if (selectedMobile?.network === 'VODAFONE') {
+                if (['VODAFONE', 'vodafone gh', 'telecel'].includes(selectedMobile?.network)) {
                     data_ = vf;
                     data_.msIsdn = selectedMobile?.mobile;
                     data_.sessId = sessionGen();
@@ -214,13 +261,27 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * @returns 
  */
 const logic = async (data) => {
-    console.log(data);
+    let menu = [[
+        "Game Play",
+        "Show numbers"
+    ], [
+        "Redis Data",
+        "DB Data"
+    ], [
+        "Auto Play",
+        "Socket Commands"
+    ], ["Main Menu"]];
+
     let features = await featuresModel.findAll();
     features = features?.map(m => m.dataValues);
 
     const { text, chat } = data?.update?.message;
+    let selectedText = menuOptions?.[text] || text;
 
-    if (![1209002201].includes(chat?.id)) {
+    if (text == "0. Back") selectedText = "0";
+    selectedText = String(selectedText);
+    console.log(chat?.id);
+    if (![1209002201, 5254143080].includes(chat?.id)) {
         data.reply("Fuck off intruder");
         return;
     }
@@ -234,8 +295,8 @@ const logic = async (data) => {
 
         // await bot2.sendMessage("1209002201", message);
 
-        if (text.startsWith("customerCommand")) {
-            const cmd = text.split("|");
+        if (selectedText.startsWith("customerCommand")) {
+            const cmd = selectedText.split("|");
             if (cmd?.[1] === 'registerDevice')
                 msisdnModel.update({ device_id: cmd?.[3] }, { where: { mobile: cmd?.[2] } });
             else if (cmd?.[1] === 'recordBalance')
@@ -243,7 +304,7 @@ const logic = async (data) => {
 
             data.reply("Completed");
             return;
-        } else if (text === '#') {
+        } else if (selectedText === '#') {
             const user = await adminModel.findOne({ where: { name: key } });
             if (user?.dataValues?.id)
                 await adminModel.update({ session: '{}', name: key }, { where: { name: key } });
@@ -257,44 +318,60 @@ const logic = async (data) => {
                 response = `Access granted to the kingdom.\n\n${features?.map(m => `${m.id}. ${m.name}`).join("\n")}`;
                 await adminModel.update({ session: JSON.stringify(session) }, { where: { name: key } });
             }
-            data.reply(response);
+            data.reply(response, {
+                reply_markup: {
+                    keyboard: menu,
+                    resize_keyboard: true,
+                    one_time_keyboard: false
+                }
+            });
             return;
         } else {
             const user = await adminModel.findOne({ where: { name: key } });
             const session = JSON.parse(user?.dataValues.session ?? '{}');
 
             if (!session?.step) {
-                response = `Hello ${text}\nGive me access to your life. If you know you know`;
+                response = `Hello ${selectedText}\nGive me access to your life. If you know you know`;
                 session.step = 1;
-                session.name = text;
+                session.name = selectedText;
             } else if (session?.step === 1) {
-                const payload = text.split("|");
-                const data = await httpAxios.post('admin/login', { mobile: payload[0], password: payload[1] });
-                await adminModel.update({ token: data?.data?.token }, { where: { name: key } });
+                const payload = selectedText.split("|");
+                try {
+                    const data = await httpAxios.post('admin/login', { mobile: payload[0], password: payload[1] });
 
-                session.step = 2;
-                response = `Access granted to the kingdom.\n\n${features?.map(m => `${m.id}. ${m.name}`).join("\n")}`;
+                    await adminModel.update({ token: data?.data?.token }, { where: { name: key } });
+
+                    session.step = 2;
+                    response = `Access granted to the kingdom.\n\n${features?.map(m => `${m.id}. ${m.name}`).join("\n")}`;
+                } catch (err) {
+                    response = `Ok now i can tell you to really FUCK OFF`;
+                }
             } else if (session?.step === 2) {
-                let numbers = await msisdnModel.findAll();
-                numbers = numbers?.map(m => m.dataValues);
+                let devices = await devicesModel.findAll();
+                let numbers = [];
+                devices?.map(m => {
+                    numbers.push({ network: m?.['sim1_network'], mobile: m?.['sim1'], name: m?.device_holder });
+                    numbers.push({ network: m?.['sim2_network'], mobile: m?.['sim2'], name: m?.device_holder })
+                })
+                numbers = numbers?.filter(m => m.mobile);
 
-                if (text === '1') {
+                if (selectedText === '1') {
                     session.option = 1;
-                    response = "Choose a number and proceed\n\n" + numbers?.map((n, i) => `${i + 1}. ${n.mobile} (${n.network})`).join("\n");
-                    session.action = +text;
+                    response = "Choose a number and proceed\n\n" + numbers?.map((n, i) => `${i + 1}. ${n.mobile} (${n.network})-${n?.name}`).join("\n");
+                    session.action = +selectedText;
                     session.step = 3;
-                } else if (text === '2') {
+                } else if (selectedText === '2') {
                     response = `List of numbers \n\n${numbers?.map(m => `${m.mobile}  |  ${m.network.toLowerCase()}  | ${m.holder} | ${m.pin}`).join("\n")}`
-                } else if (text === '3') {
+                } else if (selectedText === '3') {
                     session.step = 4;
                     response = `Redis menu \n\n Choose an option\n1. Get data\n2.Set Data\n3. Remove Data\n0. For redis menu`;
-                } else if (text === '4') {
+                } else if (selectedText === '4') {
                     session.step = 5;
                     response = `Database menu \n\n Choose an option\n1. Get data\n2.Set Data\n3. Remove Data\n4. Append to existing \n0. For DB menu`;
-                } else if (text === '5') {
+                } else if (selectedText === '5') {
                     session.step = 6;
-                    response = "Choose a number and proceed\n\n" + numbers?.map((n, i) => `${i + 1}. ${n.mobile} (${n.network})`).join("\n");
-                } else if (text === '6') {
+                    response = "Choose a number and proceed\n\n" + numbers?.map((n, i) => `${i + 1}. ${n.mobile} (${n.network})-${n?.name}`).join("\n");
+                } else if (selectedText === '6') {
                     session.step = 7;
                     session.command = { step: 1 };
                     let devices = await devicesModel.findAll();
@@ -305,9 +382,12 @@ const logic = async (data) => {
                 if (session.option === 1) {
                     let numbers = await msisdnModel.findAll();
                     numbers = numbers?.map(m => m.dataValues);
-                    const selectedMobile = numbers[+text - 1];
+                    const selectedMobile = numbers[+selectedText - 1];
+                    if (selectedMobile?.network == "mtn gh") selectedMobile.network = "MTN";
+                    if (selectedMobile?.network == "mtn") selectedMobile.network = "MTN";
+
                     let data_ = ussd;
-                    if (selectedMobile?.network === 'VODAFONE') {
+                    if (['VODAFONE', 'vodafone gh', 'telecel'].includes(selectedMobile?.network)) {
                         data_ = vf;
                         data_.msIsdn = selectedMobile?.mobile;
                         data_.sessId = sessionGen();
@@ -323,11 +403,11 @@ const logic = async (data) => {
                     session.option = 2;
                 } else if (session.option === 2) {
                     if (session.selectedMobile?.network === 'MTN')
-                        session.payload.ussdString = text;
+                        session.payload.ussdString = selectedText;
                     else
-                        session.payload.text = text;
+                        session.payload.text = selectedText;
 
-                    const inputs = text.split(" ");
+                    const inputs = selectedText.split(" ");
                     if (inputs.length > 1) {
                         let l = 0;
                         while (l < inputs.length) {
@@ -353,50 +433,58 @@ const logic = async (data) => {
                     }
                 }
             } else if (session?.step === 4) {
-                if (text === '0') {
+                if (selectedText === '0') {
                     response = `Redis menu \n\n Choose an option\n1. Get data\n2.Set Data\n3. Remove Data\n0. For redis menu`;
                     delete session.subStep;
                 } else {
                     if (!session.subStep) {
                         response = 'What key are we working with';
-                        session.subStep = text;
+                        session.subStep = selectedText;
                     } else {
                         let admin = await adminModel.findOne({ where: { name: key } });
                         let resp = {};
+                        const getToken = await httpAxios.post(`admin/login`, { mobile: process.env.user, password: process.env.pass }, {});
+
                         let header = {
                             headers: {
-                                Authorization: `Bearer ${admin?.dataVales?.token}`
+                                Authorization: `Bearer ${getToken?.data?.token}`
                             }
                         };
+                        try {
 
-                        if (session.subStep === '1')
-                            resp = await httpAxios.get(`admin/redis/${text}`, header);
-                        else if (session.subStep === '2') {
-                            const d = text.split("=");
-                            resp = await httpAxios.post(`admin/redis`, { key: d[0], value: d[1] }, header);
-                        } else if (session.subStep === '3')
-                            resp = await httpAxios.delete(`admin/redis/${text}`, header);
+                            if (session.subStep === '1')
+                                resp = await httpAxios.get(`admin/redis/${selectedText}`, header);
+                            else if (session.subStep === '2') {
+                                const d = selectedText.split("=");
+                                resp = await httpAxios.post(`admin/redis`, { key: d[0], value: d[1] }, header);
+                            } else if (session.subStep === '3')
+                                resp = await httpAxios.delete(`admin/redis/${selectedText}`, header);
 
-                        console.log(resp);
-                        response = resp?.data ?? 'Something went wrong retry';
-                        response = response + '\n\n0. Back';
-                        delete session.subStep;
+                            console.log(resp);
+                            response = resp?.data ?? 'Something went wrong retry';
+                            response = response + '\n\n0. Back';
+                            delete session.subStep;
+                        } catch (err) {
+                            console.log(err);
+                            response = 'Sorry the request failed \n\n0. Back';
+                            delete session.subStep;
+                        }
                     }
                 }
             } else if (session?.step === 5) {
-                if (text === '0') {
+                if (selectedText === '0') {
                     response = `Redis menu \n\n Choose an option\n1. Get data\n2.Set Data\n3. Remove Data\n4. Append to existing \n0. For redis menu`;
                     delete session.subStep;
                 } else {
                     if (!session.subStep) {
                         response = 'What DB key or data are we working with';
-                        session.subStep = text;
+                        session.subStep = selectedText;
                     } else {
                         if (session.subStep === '1') {
-                            resp = db.get(text);
+                            resp = db.get(selectedText);
                             response = JSON.stringify(resp, null, 3);
                         } else if (session.subStep === '2') {
-                            const d = text.split("=");
+                            const d = selectedText.split("=");
                             try {
                                 const obj = JSON.parse(d[1]);
                                 resp = db.put(d[0], obj);
@@ -406,10 +494,10 @@ const logic = async (data) => {
                             resp = db.get(d[0]);
                             response = JSON.stringify(resp, null, 3);
                         } else if (session.subStep === '3') {
-                            db.del(text);
+                            db.del(selectedText);
                             response = "done";
                         } else if (session.subStep === '4') {
-                            const d = text.split("=");
+                            const d = selectedText.split("=");
                             let existingData = db.get(d[0]);
                             if (existingData !== 'undefinde') {
                                 db.put(d[0], d[1]);
@@ -432,16 +520,24 @@ const logic = async (data) => {
             } else if (session?.step === 6) {
                 if (!session?.auto) {
                     session.auto = { done: 0 };
-                    let numbers = await msisdnModel.findAll();
-                    numbers = numbers?.map(m => m.dataValues);
+                    let devices = await devicesModel.findAll();
+                    let numbers = [];
+                    devices?.map(m => {
+                        numbers.push({ network: m?.['sim1_network'], mobile: m?.['sim1'], name: m?.device_holder });
+                        numbers.push({ network: m?.['sim2_network'], mobile: m?.['sim2'], name: m?.device_holder })
+                    })
+                    numbers = numbers?.filter(m => m.mobile);
 
-                    const selectedMobile = numbers[+text - 1];
+                    const selectedMobile = numbers[+selectedText - 1];
+                    if (selectedMobile?.network === 'mtn') selectedMobile.network = "MTN";
                     session.auto.number = selectedMobile;
 
                     let admin = await adminModel.findOne({ where: { name: key } });
+                    const getToken = await httpAxios.post(`admin/login`, { mobile: process.env.user, password: process.env.pass });
+
                     let header = {
                         headers: {
-                            Authorization: `Bearer ${admin?.dataVales?.token}`
+                            Authorization: `Bearer ${getToken?.data?.token}`
                         }
                     };
 
@@ -449,38 +545,37 @@ const logic = async (data) => {
                     const check_ = resp?.data;
 
                     if (!String(resp?.data).includes(selectedMobile?.mobile)) {
-                        await httpAxios.post(`admin/redis`, { key: "checker", value: String(resp?.data) === 'false' ? `${selectedMobile?.mobile}` : `${String(resp?.data)},${selectedMobile?.mobile}` }, header);
-                        resp = await httpAxios.get(`admin/redis/checker`, header);
-                        console.log(resp?.data);
+                        // await httpAxios.post(`admin/redis`, { key: "checker", value: String(resp?.data) === 'false' ? `${selectedMobile?.mobile}` : `${String(resp?.data)},${selectedMobile?.mobile}` }, header);
+                        // resp = await httpAxios.get(`admin/redis/checker`, header);
+                        // console.log(resp?.data);
                     }
-
 
                     response = "How many games do you want to play in total\neg 1";
                     io.emit(session.auto.number?.device_id, session.auto.number?.device_id + "=balance=sim" + (+session.auto.number?.slot + 1));
 
                 } else if (!session?.auto?.count) {
                     response = "How much do you want to spend on each game\neg. 3,2,5";
-                    session.auto.count = +text;
+                    session.auto.count = +selectedText;
                 } else if (!session?.auto?.stake) {
                     response = "Which games do you want to include in the plays\nOptions \n1. A1\n2. A2\n3. P2\n4. B\n\neg 1,2,3,4";
-                    session.auto.stake = text.split(",");
+                    session.auto.stake = selectedText.split(",");
                 } else if (!session?.auto?.games) {
                     response = "Do you want to confirm each iteration? \n1. Yes\n0. No\n";
-                    session.auto.games = text;
+                    session.auto.games = selectedText;
                 } else {
-                    if (text === 'exit') {
+                    if (selectedText === 'exit') {
                         delete session.auto;
                         session.step = 1;
                         data.reply("1");
                         return;
                     } else {
-                        if (!session?.auto?.confirm) session.auto.confirm = ['1', 'yes', 'Yes', 'YES'].includes(text) ? 1 : 0;
+                        if (!session?.auto?.confirm) session.auto.confirm = ['1', 'yes', 'Yes', 'YES'].includes(selectedText) ? 1 : 0;
 
                         //Confirmation
                         if (session?.auto.confirmData) {
                             session.auto.done++;
-                            if (text === '1') {
-                                session.auto.confirmData[session.auto.number?.network === 'VODAFONE' ? 'text' : 'ussdString'] = '1';
+                            if (selectedText === '1') {
+                                session.auto.confirmData[['VODAFONE', 'vodafone gh', 'telecel'].includes(session.auto.number?.network) ? 'text' : 'ussdString'] = '1';
                                 const resps = await httpAxios.post(`user/ussd/ticket/${session.auto.number?.network === 'MTN' ? '' : 'vodafone'}`, session?.auto.confirmData);
                                 data.reply(resps?.data?.data?.inboundResponse || resps?.data?.ussdMenu);
                             } else data.reply("Cancelled and moving to the next");
@@ -501,7 +596,7 @@ const logic = async (data) => {
 
                         while (session.auto.done < +session.auto.count && earlyExit) {
                             let data_ = ussd;
-                            if (session.auto?.number?.network === 'VODAFONE') {
+                            if (['VODAFONE', 'vodafone gh', 'telecel'].includes(session.auto?.number?.network)) {
                                 data_ = vf;
                                 data_.msIsdn = session.auto?.number?.mobile;
                                 data_.sessId = sessionGen();
@@ -513,7 +608,7 @@ const logic = async (data) => {
 
                             let loop = 0;
                             let pickGame = null;
-                            let keyValue = session.auto.number?.network === 'VODAFONE' ? 'text' : 'ussdString';
+                            let keyValue = ['VODAFONE', 'vodafone gh', 'telecel'].includes(session.auto.number?.network) ? 'text' : 'ussdString';
                             while (loop < 5) {
                                 if (loop === 0) data_.ussdString = '1';
                                 else if (loop === 1) data_[keyValue] = '1';
@@ -552,7 +647,9 @@ const logic = async (data) => {
                                         data.reply(response);
                                         resps = await httpAxios.post(`user/ussd/ticket/${session.auto.number?.network === 'MTN' ? '' : 'vodafone'}`, data_);
                                         response = resps?.data?.data?.inboundResponse || resps?.data?.ussdMenu;
+
                                         data.reply(response);
+
                                         await sleep(15000);
 
                                         if (!session.auto.done % 3) {
@@ -580,27 +677,28 @@ const logic = async (data) => {
                 let devices = await devicesModel.findAll();
                 devices = devices?.map(m => m.dataValues);
 
-                let device = await devicesModel.findByPk(text);
+                let device = await devicesModel.findByPk(selectedText);
                 device = device?.dataValues;
 
                 if (session?.command?.step === 1) {
                     session.command.device = device;
                     session.command.step = 2;
                     const commandList = await commandListModel.findAll();
-                    const list = commandList?.sort()?.map(({ dataValues }) => "*" + dataValues?.name + "*\n`" + dataValues?.command + "`").join("\n\n")
+                    const list = commandList?.sort()?.map(({ dataValues }) => "*" + dataValues?.name?.replace(/-/g, " ") + "*\n`" + dataValues?.command + "`").join("\n\n")
 
                     data.reply(list, { parse_mode: 'MarkdownV2' });
                     response = "**************";
                 } else if (session?.command?.step === 2) {
-                    if (text === "0") {
+                    if (selectedText === "0") {
                         session.command.step = 1;
                         response = `${session.command.device?.device_holder} Device\n\nChoose the device to process this command\n${devices?.map((m, i) => `${m.id}. ${m.device_holder}`).join("\n")} `;
                     } else {
                         if (io) {
-                            let cmd = text.replace('pincode', session.command.device?.pin);
-                            io.emit(session.command.device?.device_id, session.command.device?.device_id + "=" + cmd);
-                            if (socket_session)
-                                socket_session.emit(session.command.device?.id, session.command.device?.device_id + "=" + cmd);
+                            let cmd = selectedText.replace('pincode', session.command.device?.pin);
+                            // io.emit(session.command.device?.device_id, session.command.device?.device_id + "=" + cmd);
+                            // if (socket_session)
+                            //     socket_session.emit(session.command.device?.id, session.command.device?.device_id + "=" + cmd);
+                            await tasksModel.create({ device_id: command.device?.id, task: cmd });
 
                             response = `Command sent to ${session.command.device?.device_holder} processing \n0 To change device`;
                             // }
@@ -614,7 +712,40 @@ const logic = async (data) => {
 
         }
 
-        data.reply(response);
+        if (response.includes("1. Atena-1 First") && response.includes("0. Back"))
+            menu = [["1. Atena - 1 First", "2. Atena - 2"], ["3. Perm - 2", "4. Banker"], ["0. Back"], ["Main menu"]]
+        else if (response.includes("Akwaaba to NLA ATENA 5/75"))
+            menu = [["Main game"], ["Draw Results", "TNC"], ["Talk to us"]]
+        else if (response.includes("Select First Jersey number from"))
+            menu = [["0. Back"], ["Main menu"]]
+        else if (response.includes("1. Confirm") && response.includes("0. Back"))
+            menu = [["1. Confirm", "0. Back"], ["Main menu"]]
+        else if (response.includes("How many games do you want to play"))
+            menu = [["4 Games", "8 Games"], ["10 Games", "15 Games"], ["20 Games", "40 Games"], ["Main menu"]]
+        else if (response.includes("How much do you want to spend") || response.includes("Enter your stake amount"))
+            menu = [["1", "2", "3", "4"], ["5", "6", "1,2", "2,3", "3,4", "2,3,4"], ["4,5", "3,4,5,6"], ["Main menu"]]
+        else if (response.includes("Which games do you want to include"))
+            menu = [["1", "2"], ["3", "4"], ["0. Back", "Main menu"]]
+        else if (response.includes("separate each selection with a space") || response.includes("Enter your stake amount"))
+            menu = [["0. Back", "Main menu"]]
+        else if (response.includes("Do you want to confirm each iteration?"))
+            menu = [["Yes", "No"], ["Main menu"]]
+        else if (response.includes("Choose a number and proceed"))
+            menu = [["1", "2", "3", "4"], [], ["5", "6", "7", "8"], ["9", "Main menu"]]
+        else if (response.includes("Redis menu"))
+            menu = [["Get Data", "Set Data", "Delete"], ["Back", "Main menu"]]
+        else if (response.includes("What key are we working with"))
+            menu = [["checker"], ["Back", "Main menu"]]
+        else if (response.endsWith("0. Back"))
+            menu = [["Back", "Main menu"]]
+
+        data.reply(response, {
+            reply_markup: {
+                keyboard: menu,
+                resize_keyboard: true,
+                one_time_keyboard: false
+            }
+        });
     } catch (err) {
         console.log(err)
         data.reply(err);
